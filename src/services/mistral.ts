@@ -1,20 +1,20 @@
-const MISTRAL_API_KEY = 'OC4qQU3JUaacE4vRfDEKb2mDTkmyjoqM';
-const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_API_KEY = ""; //add your Mistral API key here
+const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
 }
 
 export async function sendToMistral(messages: ChatMessage[]): Promise<string> {
   const response = await fetch(MISTRAL_API_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${MISTRAL_API_KEY}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-latest',
+      model: "mistral-small-latest",
       messages,
       temperature: 0.7,
       max_tokens: 1024,
@@ -27,7 +27,7 @@ export async function sendToMistral(messages: ChatMessage[]): Promise<string> {
   }
 
   const data = await response.json();
-  return data.choices[0]?.message?.content || 'Нет ответа от AI';
+  return data.choices[0]?.message?.content || "Нет ответа от AI";
 }
 
 export const SYSTEM_PROMPT_ANALYST = `Ты — AI-ассистент для психолога. Твоя задача:
