@@ -1,0 +1,378 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { Client, Schedule, SocialLink } from '../types';
+import { v4 as uuidv4 } from 'uuid';
+import Layout from '../components/Layout';
+
+export default function ClientForm() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { addClient, updateClient, getClientById, user } = useApp();
+  const isEditing = !!id;
+
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    notes: '',
+    packageId: '',
+    remainingSessions: 0,
+    meetingLink: '',
+    isOnline: false,
+    status: 'active' as Client['status'],
+    avatar: '',
+  });
+
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+
+  useEffect(() => {
+    if (isEditing) {
+      const client = getClientById(id);
+      if (client) {
+        setFormData({
+          name: client.name,
+          phone: client.phone || '',
+          email: client.email || '',
+          notes: client.notes,
+          packageId: client.packageId || '',
+          remainingSessions: client.remainingSessions,
+          meetingLink: client.meetingLink || '',
+          isOnline: client.isOnline,
+          status: client.status,
+          avatar: client.avatar || '',
+        });
+        setSocialLinks(client.socialLinks);
+        setSchedules(client.schedules);
+      }
+    }
+  }, [id, isEditing, getClientById]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const clientData = {
+      ...formData,
+      socialLinks,
+      schedules,
+    };
+
+    if (isEditing) {
+      updateClient(id, clientData);
+    } else {
+      addClient(clientData);
+    }
+    
+    navigate('/clients');
+  };
+
+  const addSocialLink = () => {
+    setSocialLinks([...socialLinks, { type: 'telegram', url: '' }]);
+  };
+
+  const removeSocialLink = (index: number) => {
+    setSocialLinks(socialLinks.filter((_, i) => i !== index));
+  };
+
+  const updateSocialLink = (index: number, data: Partial<SocialLink>) => {
+    setSocialLinks(socialLinks.map((link, i) => i === index ? { ...link, ...data } : link));
+  };
+
+  const addSchedule = () => {
+    setSchedules([...schedules, { id: uuidv4(), dayOfWeek: 1, time: '10:00', duration: 60 }]);
+  };
+
+  const removeSchedule = (id: string) => {
+    setSchedules(schedules.filter(s => s.id !== id));
+  };
+
+  const updateSchedule = (id: string, data: Partial<Schedule>) => {
+    setSchedules(schedules.map(s => s.id === id ? { ...s, ...data } : s));
+  };
+
+  const handlePackageChange = (packageId: string) => {
+    const pkg = user?.packages.find(p => p.id === packageId);
+    setFormData({
+      ...formData,
+      packageId,
+      remainingSessions: pkg ? pkg.sessions : 0,
+    });
+  };
+
+  const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+
+  return (
+    <Layout>
+      <div className="max-w-2xl mx-auto animate-fadeIn">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isEditing ? 'Редактировать клиента' : 'Новый клиент'}
+          </h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Info */}
+          <div className="card">
+            <h2 className="font-semibold text-gray-900 mb-4">Основная информация</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Имя *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="input-field"
+                  placeholder="Иван Петров"
+                  required
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="input-field"
+                    placeholder="+7 (999) 123-45-67"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="input-field"
+                    placeholder="email@example.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Client['status'] })}
+                  className="input-field"
+                >
+                  <option value="active">Активен</option>
+                  <option value="paused">На паузе</option>
+                  <option value="completed">Завершен</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Social Links */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-900">Социальные сети</h2>
+              <button type="button" onClick={addSocialLink} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
+                <Plus className="w-4 h-4" />
+                Добавить
+              </button>
+            </div>
+
+            {socialLinks.length > 0 ? (
+              <div className="space-y-3">
+                {socialLinks.map((link, index) => (
+                  <div key={index} className="flex gap-3">
+                    <select
+                      value={link.type}
+                      onChange={(e) => updateSocialLink(index, { type: e.target.value as SocialLink['type'] })}
+                      className="input-field w-auto"
+                    >
+                      <option value="telegram">Telegram</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="other">Другое</option>
+                    </select>
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={(e) => updateSocialLink(index, { url: e.target.value })}
+                      className="input-field flex-1"
+                      placeholder="https://..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSocialLink(index)}
+                      className="p-3 text-red-500 hover:bg-red-50 rounded-xl"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">Ссылки на соцсети не добавлены</p>
+            )}
+          </div>
+
+          {/* Session Format */}
+          <div className="card">
+            <h2 className="font-semibold text-gray-900 mb-4">Формат сессий</h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={!formData.isOnline}
+                    onChange={() => setFormData({ ...formData, isOnline: false })}
+                    className="w-4 h-4 text-indigo-600"
+                  />
+                  <span>Очные встречи</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={formData.isOnline}
+                    onChange={() => setFormData({ ...formData, isOnline: true })}
+                    className="w-4 h-4 text-indigo-600"
+                  />
+                  <span>Онлайн</span>
+                </label>
+              </div>
+
+              {formData.isOnline && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ссылка на встречу</label>
+                  <input
+                    type="url"
+                    value={formData.meetingLink}
+                    onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
+                    className="input-field"
+                    placeholder="https://zoom.us/j/..."
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Package */}
+          <div className="card">
+            <h2 className="font-semibold text-gray-900 mb-4">Пакет услуг</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Пакет</label>
+                <select
+                  value={formData.packageId}
+                  onChange={(e) => handlePackageChange(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Без пакета</option>
+                  {user?.packages.map(pkg => (
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.name} ({pkg.sessions} сессий - {pkg.price.toLocaleString()} {user.currency})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {formData.packageId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Осталось сессий</label>
+                  <input
+                    type="number"
+                    value={formData.remainingSessions}
+                    onChange={(e) => setFormData({ ...formData, remainingSessions: parseInt(e.target.value) || 0 })}
+                    className="input-field"
+                    min="0"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Schedule */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-900">Расписание</h2>
+              <button type="button" onClick={addSchedule} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
+                <Plus className="w-4 h-4" />
+                Добавить день
+              </button>
+            </div>
+
+            {schedules.length > 0 ? (
+              <div className="space-y-3">
+                {schedules.map(schedule => (
+                  <div key={schedule.id} className="flex flex-wrap gap-3 items-center p-3 bg-gray-50 rounded-xl">
+                    <select
+                      value={schedule.dayOfWeek}
+                      onChange={(e) => updateSchedule(schedule.id, { dayOfWeek: parseInt(e.target.value) })}
+                      className="input-field w-auto"
+                    >
+                      {dayNames.map((name, i) => (
+                        <option key={i} value={i}>{name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="time"
+                      value={schedule.time}
+                      onChange={(e) => updateSchedule(schedule.id, { time: e.target.value })}
+                      className="input-field w-auto"
+                    />
+                    <select
+                      value={schedule.duration}
+                      onChange={(e) => updateSchedule(schedule.id, { duration: parseInt(e.target.value) })}
+                      className="input-field w-auto"
+                    >
+                      <option value={30}>30 мин</option>
+                      <option value={45}>45 мин</option>
+                      <option value={60}>60 мин</option>
+                      <option value={90}>90 мин</option>
+                      <option value={120}>120 мин</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeSchedule(schedule.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg ml-auto"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">Расписание не задано</p>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div className="card">
+            <h2 className="font-semibold text-gray-900 mb-4">Заметки</h2>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="input-field min-h-[120px] resize-y"
+              placeholder="Дополнительная информация о клиенте..."
+            />
+          </div>
+
+          {/* Submit */}
+          <div className="flex gap-4">
+            <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1">
+              Отмена
+            </button>
+            <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2">
+              <Save className="w-5 h-5" />
+              {isEditing ? 'Сохранить' : 'Создать'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </Layout>
+  );
+}
