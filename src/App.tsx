@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
@@ -27,6 +28,14 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useApp();
+  if (user && !user.onboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <>{children}</>;
+}
+
 function GlobalNotifications() {
   const { isAuthenticated } = useApp();
   if (!isAuthenticated) return null;
@@ -39,30 +48,33 @@ function GlobalNotifications() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, user } = useApp();
   return (
     <>
-      {isAuthenticated && <GlobalNotifications />}
-      {isAuthenticated && <AIFloatingChat />}
+      {isAuthenticated && user?.onboardingComplete && <GlobalNotifications />}
+      {isAuthenticated && user?.onboardingComplete && <AIFloatingChat />}
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/onboarding" element={
+          <ProtectedRoute><Onboarding /></ProtectedRoute>
+        } />
 
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-        <Route path="/clients/new" element={<ProtectedRoute><ClientForm /></ProtectedRoute>} />
-        <Route path="/clients/:id" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
-        <Route path="/clients/:id/edit" element={<ProtectedRoute><ClientForm /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><OnboardingGuard><Dashboard /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients" element={<ProtectedRoute><OnboardingGuard><Clients /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients/new" element={<ProtectedRoute><OnboardingGuard><ClientForm /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients/:id" element={<ProtectedRoute><OnboardingGuard><ClientDetail /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients/:id/edit" element={<ProtectedRoute><OnboardingGuard><ClientForm /></OnboardingGuard></ProtectedRoute>} />
 
-        <Route path="/clients/:clientId/sessions/new" element={<ProtectedRoute><SessionForm /></ProtectedRoute>} />
-        <Route path="/clients/:clientId/sessions/:sessionId" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
-        <Route path="/clients/:clientId/sessions/:sessionId/edit" element={<ProtectedRoute><SessionForm /></ProtectedRoute>} />
-        <Route path="/sessions/:sessionId/edit" element={<ProtectedRoute><SessionForm /></ProtectedRoute>} />
+        <Route path="/clients/:clientId/sessions/new" element={<ProtectedRoute><OnboardingGuard><SessionForm /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients/:clientId/sessions/:sessionId" element={<ProtectedRoute><OnboardingGuard><SessionDetail /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients/:clientId/sessions/:sessionId/edit" element={<ProtectedRoute><OnboardingGuard><SessionForm /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/sessions/:sessionId/edit" element={<ProtectedRoute><OnboardingGuard><SessionForm /></OnboardingGuard></ProtectedRoute>} />
 
-        <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-        <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute><OnboardingGuard><Calendar /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/journal" element={<ProtectedRoute><OnboardingGuard><Journal /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><OnboardingGuard><Reports /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><OnboardingGuard><Profile /></OnboardingGuard></ProtectedRoute>} />
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

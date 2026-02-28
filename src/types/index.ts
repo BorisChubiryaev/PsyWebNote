@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   email: string;
-  password: string;
+  password?: string;
   name: string;
   avatar?: string;
   therapyType: string;
@@ -15,6 +15,7 @@ export interface User {
     end: string;
   };
   workingDays: number[];
+  onboardingComplete?: boolean;
 }
 
 export interface Package {

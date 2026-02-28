@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Loader2, Bot, User as UserIcon, ChevronDown } from 'lucide-react';
-import { sendToMistral, ChatMessage, SYSTEM_PROMPT_GENERAL } from '../services/mistral';
+import { sendToMistral, ChatMessage, getGeneralPrompt } from '../services/mistral';
+import { useApp } from '../context/AppContext';
 
 interface Message {
   id: string;
@@ -17,6 +18,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function AIFloatingChat() {
+  const { user } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [isMin, setIsMin] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,6 +27,14 @@ export default function AIFloatingChat() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = window.innerWidth < 640;
+
+  const systemPrompt = getGeneralPrompt({
+    name: user?.name,
+    therapyType: user?.therapyType,
+    hourlyRate: user?.hourlyRate,
+    currency: user?.currency,
+    bio: user?.bio,
+  });
 
   useEffect(() => {
     if (isOpen && !isMin) endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,7 +53,7 @@ export default function AIFloatingChat() {
     setLoading(true);
     try {
       const history: ChatMessage[] = [
-        { role: 'system', content: SYSTEM_PROMPT_GENERAL },
+        { role: 'system', content: systemPrompt },
         ...messages.map(m => ({ role: m.role as 'user'|'assistant', content: m.content })),
         { role: 'user', content: msg },
       ];

@@ -10,7 +10,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import Layout from '../components/Layout';
-import { sendToMistral, ChatMessage, SYSTEM_PROMPT_ANALYST } from '../services/mistral';
+import { sendToMistral, ChatMessage, getAnalystPrompt } from '../services/mistral';
 import { Session, Client } from '../types';
 
 const moodEmojis: Record<number, string> = {
@@ -260,9 +260,10 @@ interface AiPanelProps {
   sessions: Session[];
   onClose: () => void;
   isMobile: boolean;
+  userCtx?: { name?: string; therapyType?: string; hourlyRate?: number; currency?: string; bio?: string };
 }
 
-function AiPanel({ client, sessions, onClose, isMobile }: AiPanelProps) {
+function AiPanel({ client, sessions, onClose, isMobile, userCtx }: AiPanelProps) {
   const [messages, setMessages] = useState<AiMsg[]>([{
     id:'0', role:'assistant',
     content:`Привет! Загрузил историю работы с **${client.name}** (${sessions.filter(s=>s.status==='completed').length} сессий). Что хотите проанализировать?`,
@@ -285,7 +286,7 @@ function AiPanel({ client, sessions, onClose, isMobile }: AiPanelProps) {
     try {
       const ctx = buildClientContext(client, sessions);
       const history: ChatMessage[] = [
-        { role:'system', content:`${SYSTEM_PROMPT_ANALYST}\n\nКОНТЕКСТ:\n${ctx}` },
+        { role:'system', content:`${getAnalystPrompt(userCtx || {})}\n\nКОНТЕКСТ:\n${ctx}` },
         ...messages.filter(m=>m.id!=='0').map(m=>({ role:m.role as 'user'|'assistant', content:m.content })),
         { role:'user', content: msg },
       ];
@@ -505,6 +506,7 @@ export default function Journal() {
                       sessions={aiSessions}
                       onClose={() => setAiClientId(null)}
                       isMobile={true}
+                      userCtx={{ name: user?.name, therapyType: user?.therapyType, hourlyRate: user?.hourlyRate, currency: user?.currency, bio: user?.bio }}
                     />
                   )}
                 </div>
@@ -520,6 +522,7 @@ export default function Journal() {
                 sessions={aiSessions}
                 onClose={() => setAiClientId(null)}
                 isMobile={false}
+                userCtx={{ name: user?.name, therapyType: user?.therapyType, hourlyRate: user?.hourlyRate, currency: user?.currency, bio: user?.bio }}
               />
             </div>
           )}

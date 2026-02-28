@@ -37,7 +37,7 @@ export default function Register() {
     try {
       const success = await register(email, password, name);
       if (success) {
-        navigate('/profile');
+        navigate('/onboarding');
       } else {
         setError('Пользователь с таким email уже существует');
       }
