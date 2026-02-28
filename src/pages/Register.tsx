@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Brain, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { Brain, Mail, Lock, Eye, EyeOff, User, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Register() {
@@ -10,10 +10,11 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { register } = useApp();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
@@ -32,11 +33,18 @@ export default function Register() {
       return;
     }
 
-    const success = register(email, password, name);
-    if (success) {
-      navigate('/profile');
-    } else {
-      setError('Пользователь с таким email уже существует');
+    setLoading(true);
+    try {
+      const success = await register(email, password, name);
+      if (success) {
+        navigate('/profile');
+      } else {
+        setError('Пользователь с таким email уже существует');
+      }
+    } catch {
+      setError('Произошла ошибка. Попробуйте снова.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,6 +81,7 @@ export default function Register() {
                   onChange={(e) => setName(e.target.value)}
                   className="input-field pl-12"
                   placeholder="Анна Иванова"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -87,6 +96,7 @@ export default function Register() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-12"
                   placeholder="email@example.com"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -101,6 +111,7 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field pl-12 pr-12"
                   placeholder="••••••••"
+                  disabled={loading}
                 />
                 <button
                   type="button"
@@ -122,12 +133,13 @@ export default function Register() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="input-field pl-12"
                   placeholder="••••••••"
+                  disabled={loading}
                 />
               </div>
             </div>
 
-            <button type="submit" className="btn-primary w-full">
-              Зарегистрироваться
+            <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2" disabled={loading}>
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Регистрация...</> : 'Зарегистрироваться'}
             </button>
           </form>
 

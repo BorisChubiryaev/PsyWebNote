@@ -5,7 +5,6 @@ import {
   Menu, X, Brain, BarChart3, BookOpen
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import NotificationSystem from './NotificationSystem';
 
 interface LayoutProps { children: React.ReactNode; }
 
@@ -17,11 +16,11 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Главная' },
-    { path: '/clients',   icon: Users,           label: 'Клиенты' },
-    { path: '/calendar',  icon: Calendar,        label: 'Календарь' },
-    { path: '/journal',   icon: BookOpen,        label: 'Журнал' },
-    { path: '/reports',   icon: BarChart3,       label: 'Отчёты' },
-    { path: '/profile',   icon: User,            label: 'Профиль' },
+    { path: '/clients', icon: Users, label: 'Клиенты' },
+    { path: '/calendar', icon: Calendar, label: 'Календарь' },
+    { path: '/journal', icon: BookOpen, label: 'Журнал' },
+    { path: '/reports', icon: BarChart3, label: 'Отчёты' },
+    { path: '/profile', icon: User, label: 'Профиль' },
   ];
 
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -39,7 +38,8 @@ export default function Layout({ children }: LayoutProps) {
           <span className="font-bold text-gray-900 text-sm">PsyWebNote</span>
         </div>
         <div className="flex items-center gap-1">
-          <NotificationSystem />
+          {/* Notification bell is rendered by App.tsx globally — see notification-portal */}
+          <div id="notification-portal-mobile" />
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100">
             {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -63,14 +63,12 @@ export default function Layout({ children }: LayoutProps) {
             <div className="w-9 h-9 rounded-xl gradient-bg flex items-center justify-center flex-shrink-0">
               <Brain className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="font-bold text-gray-900 text-sm">PsyWebNote</h1>
               <p className="text-xs text-gray-500">Для психологов</p>
             </div>
-            {/* Notifications inline in sidebar header (desktop) */}
-            <div className="hidden lg:flex ml-auto">
-              <NotificationSystem />
-            </div>
+            {/* Notification bell portal for desktop */}
+            <div id="notification-portal-desktop" className="hidden lg:flex" />
           </div>
         </div>
 
@@ -135,9 +133,8 @@ export default function Layout({ children }: LayoutProps) {
               key={item.path}
               to={item.path}
               onClick={closeSidebar}
-              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                active ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${active ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                }`}
             >
               <item.icon className="w-5 h-5" />
               <span className="text-[9px] font-medium leading-tight">{item.label}</span>

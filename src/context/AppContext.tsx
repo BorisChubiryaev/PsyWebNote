@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { User, Client, Session, Appointment, Package } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 import { addDays, format, startOfWeek, addWeeks, getDay } from 'date-fns';
+import { api, useBackend, storage, hashPassword, verifyPassword } from '../services/api';
 
 interface AppContextType {
   user: User | null;
@@ -9,8 +9,9 @@ interface AppContextType {
   sessions: Session[];
   appointments: Appointment[];
   isAuthenticated: boolean;
-  login: (email: string, password: string) => boolean;
-  register: (email: string, password: string, name: string) => boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => void;
@@ -37,54 +38,44 @@ const defaultPackages: Package[] = [
   { id: '3', name: 'Премиум', sessions: 12, price: 48000, discount: 20 },
 ];
 
+// ── Demo Data (localStorage mode only) ──────────────────────
+
 const createDemoData = () => {
   const today = new Date();
   const formatDate = (d: Date) => format(d, 'yyyy-MM-dd');
 
   const demoClients: Client[] = [
     {
-      id: 'demo-client-1',
-      name: 'Мария Сидорова',
-      phone: '+7 (999) 123-45-67',
-      email: 'maria@example.com',
+      id: 'demo-client-1', name: 'Мария Сидорова',
+      phone: '+7 (999) 123-45-67', email: 'maria@example.com',
       socialLinks: [{ type: 'telegram', url: 'https://t.me/maria' }],
       notes: 'Обратилась с тревожным расстройством.',
-      packageId: '2',
-      remainingSessions: 5,
+      packageId: '2', remainingSessions: 5,
       schedules: [{ id: 's1', dayOfWeek: 2, time: '10:00', duration: 60 }],
-      meetingLink: 'https://zoom.us/j/123456789',
-      isOnline: true,
-      createdAt: new Date(today.getTime() - 90 * 86400000).toISOString(),
-      status: 'active',
+      meetingLink: 'https://zoom.us/j/123456789', isOnline: true,
+      createdAt: new Date(today.getTime() - 90 * 86400000).toISOString(), status: 'active',
     },
     {
-      id: 'demo-client-2',
-      name: 'Алексей Петров',
+      id: 'demo-client-2', name: 'Алексей Петров',
       phone: '+7 (999) 234-56-78',
       socialLinks: [{ type: 'whatsapp', url: 'https://wa.me/79992345678' }],
       notes: 'Работаем над управлением гневом.',
       remainingSessions: 0,
       schedules: [{ id: 's2', dayOfWeek: 4, time: '14:00', duration: 60 }],
       isOnline: false,
-      createdAt: new Date(today.getTime() - 60 * 86400000).toISOString(),
-      status: 'active',
+      createdAt: new Date(today.getTime() - 60 * 86400000).toISOString(), status: 'active',
     },
     {
-      id: 'demo-client-3',
-      name: 'Елена Козлова',
-      phone: '+7 (999) 345-67-89',
-      socialLinks: [],
+      id: 'demo-client-3', name: 'Елена Козлова',
+      phone: '+7 (999) 345-67-89', socialLinks: [],
       notes: 'Работа с самооценкой и личными границами.',
-      packageId: '1',
-      remainingSessions: 2,
+      packageId: '1', remainingSessions: 2,
       schedules: [
         { id: 's3', dayOfWeek: 1, time: '11:00', duration: 60 },
         { id: 's4', dayOfWeek: 5, time: '11:00', duration: 60 },
       ],
-      meetingLink: 'https://meet.google.com/abc-defg-hij',
-      isOnline: true,
-      createdAt: new Date(today.getTime() - 30 * 86400000).toISOString(),
-      status: 'active',
+      meetingLink: 'https://meet.google.com/abc-defg-hij', isOnline: true,
+      createdAt: new Date(today.getTime() - 30 * 86400000).toISOString(), status: 'active',
     },
   ];
 
@@ -158,33 +149,19 @@ const createDemoData = () => {
         if (targetDate < today && format(targetDate, 'yyyy-MM-dd') !== format(today, 'yyyy-MM-dd')) continue;
 
         const dateStr = formatDate(targetDate);
-        const aptId = uuidv4();
-        const sessionId = uuidv4();
+        const aptId = crypto.randomUUID();
+        const sessionId = crypto.randomUUID();
 
         demoAppointments.push({
-          id: aptId,
-          clientId: client.id,
-          clientName: client.name,
-          date: dateStr,
-          time: schedule.time,
-          duration: schedule.duration,
-          status: 'scheduled',
-          isOnline: client.isOnline,
-          meetingLink: client.meetingLink,
+          id: aptId, clientId: client.id, clientName: client.name,
+          date: dateStr, time: schedule.time, duration: schedule.duration,
+          status: 'scheduled', isOnline: client.isOnline, meetingLink: client.meetingLink,
         });
 
-        // Create a matching session for each appointment
         demoAppointmentSessions.push({
-          id: sessionId,
-          clientId: client.id,
-          date: dateStr,
-          time: schedule.time,
-          duration: schedule.duration,
-          status: 'scheduled',
-          notes: '',
-          topics: [],
-          isPaid: false,
-          amount: 5000,
+          id: sessionId, clientId: client.id,
+          date: dateStr, time: schedule.time, duration: schedule.duration,
+          status: 'scheduled', notes: '', topics: [], isPaid: false, amount: 5000,
         });
       }
     });
@@ -197,80 +174,151 @@ const createDemoData = () => {
   };
 };
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('psywebnote_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [clients, setClients] = useState<Client[]>(() => {
-    const saved = localStorage.getItem('psywebnote_clients');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    const saved = localStorage.getItem('psywebnote_sessions');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('psywebnote_appointments');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('psywebnote_users');
-    return saved ? JSON.parse(saved) : [];
-  });
+// ── Provider ────────────────────────────────────────────────
 
-  // Refs for accessing latest state in callbacks
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(() => api.getUser());
+  const [clients, setClients] = useState<Client[]>(() => api.getClients());
+  const [sessions, setSessions] = useState<Session[]>(() => api.getSessions());
+  const [appointments, setAppointments] = useState<Appointment[]>(() => api.getAppointments());
+  const [loading, setLoading] = useState(false);
+
   const sessionsRef = useRef<Session[]>(sessions);
   useEffect(() => { sessionsRef.current = sessions; }, [sessions]);
 
-  useEffect(() => {
-    if (user) localStorage.setItem('psywebnote_user', JSON.stringify(user));
-    else localStorage.removeItem('psywebnote_user');
-  }, [user]);
-  useEffect(() => { localStorage.setItem('psywebnote_clients', JSON.stringify(clients)); }, [clients]);
-  useEffect(() => { localStorage.setItem('psywebnote_sessions', JSON.stringify(sessions)); }, [sessions]);
-  useEffect(() => { localStorage.setItem('psywebnote_appointments', JSON.stringify(appointments)); }, [appointments]);
-  useEffect(() => { localStorage.setItem('psywebnote_users', JSON.stringify(users)); }, [users]);
+  // ── Persist to localStorage (always, as cache) ──
+  useEffect(() => { api.saveUser(user); }, [user]);
+  useEffect(() => { api.saveClients(clients); }, [clients]);
+  useEffect(() => { api.saveSessions(sessions); }, [sessions]);
+  useEffect(() => { api.saveAppointments(appointments); }, [appointments]);
 
-  const login = (email: string, password: string): boolean => {
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    if (foundUser) { setUser(foundUser); return true; }
-    return false;
+  // ── Backend: Fetch all data after login ──
+  const fetchDataFromBackend = useCallback(async () => {
+    if (!useBackend) return;
+    setLoading(true);
+    try {
+      const data = await api.fetchAllData();
+      if (data) {
+        setClients(data.clients);
+        setSessions(data.sessions);
+        sessionsRef.current = data.sessions;
+        setAppointments(data.appointments);
+      }
+    } catch (err) {
+      console.error('Failed to fetch data from backend:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Auth ──────────────────────────────────────────────────
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    if (useBackend) {
+      const u = await api.login(email, password);
+      if (u) {
+        setUser(u);
+        // Fetch all data from backend
+        setTimeout(fetchDataFromBackend, 0);
+        return true;
+      }
+      return false;
+    } else {
+      const users = storage.get<User[]>('users', []);
+      for (const u of users) {
+        if (u.email === email) {
+          const isHashed = /^[a-f0-9]{64}$/.test(u.password || '');
+          let match = false;
+          if (isHashed) {
+            match = await verifyPassword(password, u.password || '');
+          } else {
+            match = u.password === password;
+            if (match) {
+              const hashed = await hashPassword(password);
+              const updated = users.map(x => x.id === u.id ? { ...x, password: hashed } : x);
+              storage.set('users', updated);
+            }
+          }
+          if (match) {
+            setUser(u);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
   };
 
-  const register = (email: string, password: string, name: string): boolean => {
-    if (users.find(u => u.email === email)) return false;
-    const newUser: User = {
-      id: uuidv4(), email, password, name,
-      therapyType: 'Когнитивно-поведенческая терапия (КПТ)',
-      hourlyRate: 5000, currency: '₽',
-      packages: defaultPackages,
-      bio: 'Практикующий психолог с опытом работы более 5 лет.',
-      phone: '+7 (999) 000-00-00',
-      workingHours: { start: '09:00', end: '18:00' },
-      workingDays: [1, 2, 3, 4, 5],
-    };
-    const { demoClients, demoSessions, demoAppointments } = createDemoData();
-    setClients(demoClients);
-    setSessions(demoSessions);
-    sessionsRef.current = demoSessions;
-    setAppointments(demoAppointments);
-    setUsers(prev => [...prev, newUser]);
-    setUser(newUser);
-    return true;
+  const register = async (email: string, password: string, name: string): Promise<boolean> => {
+    if (useBackend) {
+      const u = await api.register(email, password, name);
+      if (u) {
+        setUser(u);
+        // No demo data in backend mode — start with clean account
+        setClients([]);
+        setSessions([]);
+        sessionsRef.current = [];
+        setAppointments([]);
+        return true;
+      }
+      return false;
+    } else {
+      const users = storage.get<User[]>('users', []);
+      if (users.find(u => u.email === email)) return false;
+
+      const hashed = await hashPassword(password);
+      const newUser: User = {
+        id: crypto.randomUUID(), email, password: hashed, name,
+        therapyType: 'Когнитивно-поведенческая терапия (КПТ)',
+        hourlyRate: 5000, currency: '₽',
+        packages: defaultPackages,
+        bio: 'Практикующий психолог с опытом работы более 5 лет.',
+        phone: '+7 (999) 000-00-00',
+        workingHours: { start: '09:00', end: '18:00' },
+        workingDays: [1, 2, 3, 4, 5],
+      };
+
+      const { demoClients, demoSessions, demoAppointments } = createDemoData();
+      setClients(demoClients);
+      setSessions(demoSessions);
+      sessionsRef.current = demoSessions;
+      setAppointments(demoAppointments);
+      storage.set('users', [...users, newUser]);
+      setUser(newUser);
+      return true;
+    }
   };
 
-  const logout = () => { setUser(null); };
+  const logout = () => {
+    api.logout();
+    setUser(null);
+    if (useBackend) {
+      // In backend mode, clear local data on logout
+      setClients([]);
+      setSessions([]);
+      sessionsRef.current = [];
+      setAppointments([]);
+    }
+  };
+
+  // ── Profile ───────────────────────────────────────────────
 
   const updateUser = (data: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...data };
       setUser(updatedUser);
-      setUsers(prev => prev.map(u => u.id === user.id ? updatedUser : u));
+
+      if (useBackend) {
+        api.syncProfile(data);
+      } else {
+        const users = storage.get<User[]>('users', []);
+        storage.set('users', users.map(u => u.id === user.id ? updatedUser : u));
+      }
     }
   };
 
-  // Ensure a session record exists for a given appointment. Returns session ID.
+  // ── Sessions helper ───────────────────────────────────────
+
   const ensureSessionForAppointment = useCallback((apt: Appointment): string => {
     const current = sessionsRef.current;
     const existing = current.find(s =>
@@ -278,21 +326,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
     if (existing) return existing.id;
 
-    const newId = uuidv4();
+    const newId = crypto.randomUUID();
     const newSession: Session = {
-      id: newId,
-      clientId: apt.clientId,
-      date: apt.date,
-      time: apt.time,
-      duration: apt.duration,
+      id: newId, clientId: apt.clientId,
+      date: apt.date, time: apt.time, duration: apt.duration,
       status: apt.status || 'scheduled',
-      notes: '',
-      topics: [],
-      isPaid: false,
+      notes: '', topics: [], isPaid: false,
       amount: user?.hourlyRate || 5000,
     };
     setSessions(prev => [...prev, newSession]);
     sessionsRef.current = [...sessionsRef.current, newSession];
+    api.syncSession('create', newSession);
     return newId;
   }, [user]);
 
@@ -316,54 +360,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         if (existsApt) continue;
 
-        const aptId = uuidv4();
-        const sessId = uuidv4();
+        const aptId = crypto.randomUUID();
+        const sessId = crypto.randomUUID();
 
-        newAppointments.push({
-          id: aptId,
-          clientId: client.id,
-          clientName: client.name,
-          date: dateStr,
-          time: schedule.time,
-          duration: schedule.duration,
-          status: 'scheduled',
-          isOnline: client.isOnline,
-          meetingLink: client.meetingLink,
-        });
+        const newApt: Appointment = {
+          id: aptId, clientId: client.id, clientName: client.name,
+          date: dateStr, time: schedule.time, duration: schedule.duration,
+          status: 'scheduled', isOnline: client.isOnline, meetingLink: client.meetingLink,
+        };
+        newAppointments.push(newApt);
 
-        // Also create a matching session
         const existsSess = sessionsRef.current.some(s =>
           s.clientId === client.id && s.date === dateStr && s.time === schedule.time
         );
         if (!existsSess) {
-          newSessions.push({
-            id: sessId,
-            clientId: client.id,
-            date: dateStr,
-            time: schedule.time,
-            duration: schedule.duration,
-            status: 'scheduled',
-            notes: '',
-            topics: [],
-            isPaid: false,
+          const newSess: Session = {
+            id: sessId, clientId: client.id,
+            date: dateStr, time: schedule.time, duration: schedule.duration,
+            status: 'scheduled', notes: '', topics: [], isPaid: false,
             amount: user?.hourlyRate || 5000,
-          });
+          };
+          newSessions.push(newSess);
         }
       }
     });
 
     if (newAppointments.length > 0) {
       setAppointments(prev => [...prev, ...newAppointments]);
+      newAppointments.forEach(a => api.syncAppointment('create', a));
     }
     if (newSessions.length > 0) {
       setSessions(prev => [...prev, ...newSessions]);
       sessionsRef.current = [...sessionsRef.current, ...newSessions];
+      newSessions.forEach(s => api.syncSession('create', s));
     }
   }, [appointments, user]);
 
-  const addClient = (client: Omit<Client, 'id' | 'createdAt'>) => {
-    const newClient: Client = { ...client, id: uuidv4(), createdAt: new Date().toISOString() };
+  // ── Clients CRUD ──────────────────────────────────────────
+
+  const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>) => {
+    const newClient: Client = { ...clientData, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     setClients(prev => [...prev, newClient]);
+    api.syncClient('create', newClient);
+
     if (newClient.schedules.length > 0) {
       setTimeout(() => generateAppointmentsForClient(newClient), 100);
     }
@@ -373,6 +412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setClients(prev => {
       const updated = prev.map(c => c.id === id ? { ...c, ...data } : c);
       const updatedClient = updated.find(c => c.id === id);
+
       if (data.schedules && updatedClient) {
         setAppointments(prevApt => prevApt.filter(a => {
           if (a.clientId !== id) return true;
@@ -382,36 +422,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (updatedClient) generateAppointmentsForClient(updatedClient);
         }, 100);
       }
+
       if (data.name) {
         setAppointments(prevApt => prevApt.map(a =>
           a.clientId === id ? { ...a, clientName: data.name! } : a
         ));
       }
+
+      // Sync to backend
+      if (updatedClient) {
+        api.syncClient('update', updatedClient, data);
+      }
+
       return updated;
     });
   };
 
   const deleteClient = (id: string) => {
+    const client = clients.find(c => c.id === id);
+    if (client) {
+      api.syncClient('delete', client);
+    }
     setClients(prev => prev.filter(c => c.id !== id));
     setSessions(prev => prev.filter(s => s.clientId !== id));
     setAppointments(prev => prev.filter(a => a.clientId !== id));
   };
 
+  // ── Sessions CRUD ─────────────────────────────────────────
+
   const addSession = (session: Omit<Session, 'id'>): string => {
-    const newId = uuidv4();
+    const newId = crypto.randomUUID();
     const newSession: Session = { ...session, id: newId };
     setSessions(prev => [...prev, newSession]);
     sessionsRef.current = [...sessionsRef.current, newSession];
+    api.syncSession('create', newSession);
     return newId;
   };
 
   const completeSession = (sessionId: string, sessionData: Partial<Session>) => {
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...sessionData } : s));
     const session = sessionsRef.current.find(s => s.id === sessionId);
-    if (session && sessionData.status === 'completed') {
-      const client = clients.find(c => c.id === session.clientId);
-      if (client && client.packageId && client.remainingSessions && client.remainingSessions > 0) {
-        updateClient(client.id, { remainingSessions: client.remainingSessions - 1 });
+    if (session) {
+      api.syncSession('update', session, sessionData);
+      if (sessionData.status === 'completed') {
+        const client = clients.find(c => c.id === session.clientId);
+        if (client && client.packageId && client.remainingSessions && client.remainingSessions > 0) {
+          updateClient(client.id, { remainingSessions: client.remainingSessions - 1 });
+        }
       }
     }
   };
@@ -427,6 +484,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return updated;
     });
 
+    if (oldSession) {
+      api.syncSession('update', oldSession, data);
+    }
+
     if (wasNotCompleted && isNowCompleted && oldSession) {
       const client = clients.find(c => c.id === oldSession.clientId);
       if (client && client.packageId && client.remainingSessions && client.remainingSessions > 0) {
@@ -436,21 +497,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteSession = (id: string) => {
+    const session = sessionsRef.current.find(s => s.id === id);
+    if (session) {
+      api.syncSession('delete', session);
+    }
     setSessions(prev => prev.filter(s => s.id !== id));
   };
 
+  // ── Appointments CRUD ─────────────────────────────────────
+
   const addAppointment = (appointment: Omit<Appointment, 'id'>) => {
-    const newApt: Appointment = { ...appointment, id: uuidv4() };
+    const newApt: Appointment = { ...appointment, id: crypto.randomUUID() };
     setAppointments(prev => [...prev, newApt]);
+    api.syncAppointment('create', newApt);
   };
 
   const updateAppointment = (id: string, data: Partial<Appointment>) => {
-    setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+    setAppointments(prev => {
+      const updated = prev.map(a => a.id === id ? { ...a, ...data } : a);
+      const updatedApt = updated.find(a => a.id === id);
+      if (updatedApt) {
+        api.syncAppointment('update', updatedApt, data);
+      }
+      return updated;
+    });
   };
 
   const deleteAppointment = (id: string) => {
+    const apt = appointments.find(a => a.id === id);
+    if (apt) {
+      api.syncAppointment('delete', apt);
+    }
     setAppointments(prev => prev.filter(a => a.id !== id));
   };
+
+  // ── Getters ───────────────────────────────────────────────
 
   const getClientById = (id: string) => clients.find(c => c.id === id);
 
@@ -461,7 +542,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      user, clients, sessions, appointments,
+      user, clients, sessions, appointments, loading,
       isAuthenticated: !!user,
       login, register, logout, updateUser,
       addClient, updateClient, deleteClient,

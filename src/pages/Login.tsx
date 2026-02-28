@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Brain, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Brain, Mail, Lock, Eye, EyeOff, Sparkles, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Login() {
@@ -8,10 +8,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useApp();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
@@ -20,11 +21,18 @@ export default function Login() {
       return;
     }
 
-    const success = login(email, password);
-    if (success) {
-      navigate('/dashboard');
-    } else {
-      setError('Неверный email или пароль');
+    setLoading(true);
+    try {
+      const success = await login(email, password);
+      if (success) {
+        navigate('/dashboard');
+      } else {
+        setError('Неверный email или пароль');
+      }
+    } catch {
+      setError('Произошла ошибка. Попробуйте снова.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,7 +83,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Decorative elements */}
         <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-white/10" />
         <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-white/10" />
       </div>
@@ -83,7 +90,6 @@ export default function Login() {
       {/* Right Panel - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center">
               <Brain className="w-7 h-7 text-white" />
@@ -113,6 +119,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-12"
                   placeholder="email@example.com"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -127,6 +134,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field pl-12 pr-12"
                   placeholder="••••••••"
+                  disabled={loading}
                 />
                 <button
                   type="button"
@@ -138,8 +146,8 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="submit" className="btn-primary w-full">
-              Войти
+            <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2" disabled={loading}>
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Вход...</> : 'Войти'}
             </button>
           </form>
 

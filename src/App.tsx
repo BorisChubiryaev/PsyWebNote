@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import Journal from './pages/Journal';
 import AIFloatingChat from './components/AIFloatingChat';
+import NotificationSystem from './components/NotificationSystem';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useApp();
@@ -26,10 +27,22 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function GlobalNotifications() {
+  const { isAuthenticated } = useApp();
+  if (!isAuthenticated) return null;
+
+  return (
+    <div className="fixed top-2 right-14 lg:top-4 lg:left-[17.5rem] lg:right-auto z-[55]">
+      <NotificationSystem />
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { isAuthenticated } = useApp();
   return (
     <>
+      {isAuthenticated && <GlobalNotifications />}
       {isAuthenticated && <AIFloatingChat />}
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
