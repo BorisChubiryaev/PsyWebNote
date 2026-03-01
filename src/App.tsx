@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp } from './context/AppContext';
+import LoadingScreen from './components/LoadingScreen';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Onboarding from './pages/Onboarding';
@@ -16,14 +18,19 @@ import Journal from './pages/Journal';
 import AIFloatingChat from './components/AIFloatingChat';
 import NotificationSystem from './components/NotificationSystem';
 
+// Google Client ID — замените на свой из Google Cloud Console
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1234567890-placeholder.apps.googleusercontent.com';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, loading } = useApp();
+  if (loading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, loading } = useApp();
+  if (loading) return null;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -39,7 +46,6 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 function GlobalNotifications() {
   const { isAuthenticated } = useApp();
   if (!isAuthenticated) return null;
-
   return (
     <div className="fixed top-2 right-14 lg:top-4 lg:left-[17.5rem] lg:right-auto z-[55]">
       <NotificationSystem />
@@ -48,20 +54,24 @@ function GlobalNotifications() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, user } = useApp();
+  const { isAuthenticated, user, loading } = useApp();
+
+  // Показываем красивый loading экран пока проверяем сессию
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <>
       {isAuthenticated && user?.onboardingComplete && <GlobalNotifications />}
       {isAuthenticated && user?.onboardingComplete && <AIFloatingChat />}
       <Routes>
-        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/login"    element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-        <Route path="/onboarding" element={
-          <ProtectedRoute><Onboarding /></ProtectedRoute>
-        } />
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
         <Route path="/dashboard" element={<ProtectedRoute><OnboardingGuard><Dashboard /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/clients" element={<ProtectedRoute><OnboardingGuard><Clients /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/clients"   element={<ProtectedRoute><OnboardingGuard><Clients /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/clients/new" element={<ProtectedRoute><OnboardingGuard><ClientForm /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/clients/:id" element={<ProtectedRoute><OnboardingGuard><ClientDetail /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/clients/:id/edit" element={<ProtectedRoute><OnboardingGuard><ClientForm /></OnboardingGuard></ProtectedRoute>} />
@@ -72,12 +82,12 @@ function AppRoutes() {
         <Route path="/sessions/:sessionId/edit" element={<ProtectedRoute><OnboardingGuard><SessionForm /></OnboardingGuard></ProtectedRoute>} />
 
         <Route path="/calendar" element={<ProtectedRoute><OnboardingGuard><Calendar /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/journal" element={<ProtectedRoute><OnboardingGuard><Journal /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><OnboardingGuard><Reports /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><OnboardingGuard><Profile /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/journal"  element={<ProtectedRoute><OnboardingGuard><Journal /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/reports"  element={<ProtectedRoute><OnboardingGuard><Reports /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/profile"  element={<ProtectedRoute><OnboardingGuard><Profile /></OnboardingGuard></ProtectedRoute>} />
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/"  element={<Navigate to="/dashboard" replace />} />
+        <Route path="*"  element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </>
   );
@@ -85,10 +95,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppProvider>
-        <AppRoutes />
-      </AppProvider>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <BrowserRouter>
+        <AppProvider>
+          <AppRoutes />
+        </AppProvider>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
