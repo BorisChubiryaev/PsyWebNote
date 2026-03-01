@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Brain, Mail, Lock, Eye, EyeOff, Sparkles, Loader2 } from 'lucide-react';
+import { Brain, Mail, Lock, Eye, EyeOff, Sparkles, Loader2, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Login() {
@@ -9,7 +9,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useApp();
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const { login, clearAllData } = useApp();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,17 +24,25 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         navigate('/dashboard');
       } else {
-        setError('Неверный email или пароль');
+        setError(result.error || 'Неверный email или пароль');
       }
     } catch {
       setError('Произошла ошибка. Попробуйте снова.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearData = () => {
+    clearAllData();
+    setShowClearConfirm(false);
+    setError('');
+    setEmail('');
+    setPassword('');
   };
 
   return (
@@ -76,8 +85,8 @@ export default function Login() {
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Планируйте расписание</h3>
-                <p className="text-white/70 text-sm">Удобный календарь для всех ваших встреч</p>
+                <h3 className="font-semibold mb-1">AI-ассистент</h3>
+                <p className="text-white/70 text-sm">Анализ сессий и рекомендации на базе ИИ</p>
               </div>
             </div>
           </div>
@@ -157,6 +166,39 @@ export default function Login() {
               Зарегистрироваться
             </Link>
           </p>
+
+          {/* Clear data option */}
+          <div className="mt-6 text-center">
+            {!showClearConfirm ? (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="text-xs text-gray-400 hover:text-red-400 transition-colors inline-flex items-center gap-1"
+              >
+                <Trash2 className="w-3 h-3" />
+                Проблемы со входом? Очистить данные
+              </button>
+            ) : (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-fadeIn">
+                <p className="text-sm text-red-700 mb-3">
+                  Это удалит ВСЕ локальные данные (аккаунты, клиентов, сессии). Вы уверены?
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={handleClearData}
+                    className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"
+                  >
+                    Да, очистить
+                  </button>
+                  <button
+                    onClick={() => setShowClearConfirm(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

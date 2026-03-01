@@ -35,11 +35,11 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const success = await register(email, password, name);
-      if (success) {
+      const result = await register(email, password, name);
+      if (result.success) {
         navigate('/onboarding');
       } else {
-        setError('Пользователь с таким email уже существует');
+        setError(result.error || 'Ошибка регистрации');
       }
     } catch {
       setError('Произошла ошибка. Попробуйте снова.');

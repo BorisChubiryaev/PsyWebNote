@@ -1,455 +1,243 @@
 /**
- * PsyWebNote — Unified API Layer
- *
- * Dual-mode architecture:
- * - Backend mode:    VITE_API_URL is set → real HTTP calls with JWT auth
- * - Offline mode:    VITE_API_URL is empty → localStorage (current behavior)
- *
- * The AppContext doesn't need to know which mode is active.
- * All mutations are optimistic (update state first, sync in background).
+ * PsyWebNote — Auth & Storage Layer
+ * Clean, no duplication, per-user data isolation
  */
 
 import { User, Client, Session, Appointment } from '../types';
 
-// ── Mode Detection ──────────────────────────────────────────
+// ── Storage Keys ────────────────────────────────────────────
 
-const API_URL = import.meta.env.VITE_API_URL || '';
-export const useBackend = !!API_URL;
+const KEYS = {
+  USERS:        'psywebnote_users',
+  CURRENT_ID:   'psywebnote_current_user_id',
+  profile: (id: string) => `psywebnote_profile_${id}`,
+  data:    (id: string) => `psywebnote_data_${id}`,
+};
 
-// ── Token Management ────────────────────────────────────────
+// ── Safe JSON helpers ───────────────────────────────────────
 
-let accessToken: string | null = null;
-
-export function setAccessToken(token: string | null) {
-  accessToken = token;
-  if (token) {
-    sessionStorage.setItem('psywebnote_access_token', token);
-  } else {
-    sessionStorage.removeItem('psywebnote_access_token');
-  }
-}
-
-export function getAccessToken(): string | null {
-  if (!accessToken) {
-    accessToken = sessionStorage.getItem('psywebnote_access_token');
-  }
-  return accessToken;
-}
-
-// ── HTTP Client with JWT + Refresh ──────────────────────────
-
-async function refreshAccessToken(): Promise<boolean> {
-  if (!API_URL) return false;
+function read<T>(key: string, fallback: T): T {
   try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setAccessToken(data.accessToken);
-      return true;
-    }
-    return false;
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw) as T;
   } catch {
-    return false;
+    return fallback;
   }
 }
 
-async function fetchAPI<T = unknown>(
-  endpoint: string,
-  options: RequestInit = {},
-  retry = true
-): Promise<T> {
-  if (!API_URL) throw new Error('Backend not configured');
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  const token = getAccessToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  if (response.status === 401 && retry) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      return fetchAPI<T>(endpoint, options, false);
-    }
-    // Session expired — clear everything
-    setAccessToken(null);
-    throw new Error('SESSION_EXPIRED');
-  }
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-    throw new Error(err.error || `HTTP ${response.status}`);
-  }
-
-  return response.json();
+function write<T>(key: string, value: T): void {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch (e) { console.error('[Storage] write failed:', e); }
 }
 
-// ── Password Hashing (for offline mode only) ────────────────
+function remove(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
+
+// ── Password Hashing ────────────────────────────────────────
 
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'psywebnote_salt_2024');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(password + 'psywebnote_salt_2024'));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const computed = await hashPassword(password);
-  return computed === hash;
+  return (await hashPassword(password)) === hash;
 }
 
-// ── Input Sanitization ──────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────
 
-export function sanitizeForDisplay(input: string): string {
-  return input.trim();
+interface StoredUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  name: string;
+  createdAt: string;
 }
 
-export function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+export interface UserData {
+  clients: Client[];
+  sessions: Session[];
+  appointments: Appointment[];
 }
 
-// ── localStorage Cache ──────────────────────────────────────
+export interface AuthResult {
+  success: boolean;
+  user: User | null;
+  error?: string;
+}
 
-const STORAGE_PREFIX = 'psywebnote_';
+// ── Auth ────────────────────────────────────────────────────
 
-export const storage = {
-  get<T>(key: string, fallback: T): T {
-    try {
-      const raw = localStorage.getItem(STORAGE_PREFIX + key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch {
-      return fallback;
+export async function authRegister(
+  email: string,
+  password: string,
+  name: string,
+): Promise<AuthResult> {
+  const e = email.trim().toLowerCase();
+  const n = name.trim();
+
+  if (!e || !password || !n)
+    return { success: false, user: null, error: 'Заполните все поля' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+    return { success: false, user: null, error: 'Некорректный email' };
+  if (password.length < 6)
+    return { success: false, user: null, error: 'Пароль должен быть не менее 6 символов' };
+
+  const stored = read<StoredUser[]>(KEYS.USERS, []);
+  if (stored.some(u => u.email === e))
+    return { success: false, user: null, error: 'Пользователь с таким email уже существует' };
+
+  const id = crypto.randomUUID();
+  const passwordHash = await hashPassword(password);
+
+  const storedUser: StoredUser = { id, email: e, passwordHash, name: n, createdAt: new Date().toISOString() };
+  const profile: User = {
+    id, email: e, name: n,
+    therapyType: '',
+    hourlyRate: 5000,
+    currency: '₽',
+    packages: [
+      { id: '1', name: 'Базовый',   sessions: 4,  price: 20000, discount: 10 },
+      { id: '2', name: 'Стандарт',  sessions: 8,  price: 36000, discount: 15 },
+      { id: '3', name: 'Премиум',   sessions: 12, price: 48000, discount: 20 },
+    ],
+    bio: '', phone: '',
+    workingHours: { start: '09:00', end: '18:00' },
+    workingDays: [1, 2, 3, 4, 5],
+    onboardingComplete: false,
+  };
+  const userData: UserData = { clients: [], sessions: [], appointments: [] };
+
+  write(KEYS.USERS, [...stored, storedUser]);
+  write(KEYS.profile(id), profile);
+  write(KEYS.data(id), userData);
+  write(KEYS.CURRENT_ID, id);
+
+  return { success: true, user: profile };
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthResult> {
+  const e = email.trim().toLowerCase();
+  if (!e || !password) return { success: false, user: null, error: 'Заполните все поля' };
+
+  const stored = read<StoredUser[]>(KEYS.USERS, []);
+  const found = stored.find(u => u.email === e);
+  if (!found) return { success: false, user: null, error: 'Неверный email или пароль' };
+
+  // Verify (support legacy plain-text)
+  let ok = false;
+  if (found.passwordHash.length === 64 && /^[a-f0-9]+$/.test(found.passwordHash)) {
+    ok = await verifyPassword(password, found.passwordHash);
+  } else {
+    ok = found.passwordHash === password;
+    if (ok) {
+      // upgrade to hash
+      const newHash = await hashPassword(password);
+      const updated = stored.map(u =>
+        u.id === found.id ? { ...u, passwordHash: newHash } : u
+      );
+      write(KEYS.USERS, updated);
     }
-  },
+  }
+  if (!ok) return { success: false, user: null, error: 'Неверный email или пароль' };
 
-  set<T>(key: string, value: T): void {
-    try {
-      localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
-    } catch (e) {
-      console.error('Storage write failed:', e);
-    }
-  },
+  // Load or migrate profile
+  let profile = read<User | null>(KEYS.profile(found.id), null);
+  if (!profile) {
+    profile = _tryMigrateProfile(found);
+    write(KEYS.profile(found.id), profile);
+  }
 
-  remove(key: string): void {
-    localStorage.removeItem(STORAGE_PREFIX + key);
-  },
+  write(KEYS.CURRENT_ID, found.id);
+  return { success: true, user: profile };
+}
 
-  clear(): void {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith(STORAGE_PREFIX));
-    keys.forEach(k => localStorage.removeItem(k));
-  },
-};
+export function authLogout(): void {
+  remove(KEYS.CURRENT_ID);
+}
 
-// ── Backend API (HTTP calls) ────────────────────────────────
+export function authGetCurrentUser(): User | null {
+  const id = read<string | null>(KEYS.CURRENT_ID, null);
+  if (!id) return null;
+  return read<User | null>(KEYS.profile(id), null);
+}
 
-export const backendApi = {
-  // Auth
-  async login(email: string, password: string): Promise<{ user: User; accessToken: string }> {
-    const data = await fetchAPI<{ user: User; accessToken: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    setAccessToken(data.accessToken);
-    return data;
-  },
+export function authUpdateProfile(userId: string, data: Partial<User>): void {
+  const cur = read<User | null>(KEYS.profile(userId), null);
+  if (cur) write(KEYS.profile(userId), { ...cur, ...data });
+}
 
-  async register(email: string, password: string, name: string): Promise<{ user: User; accessToken: string }> {
-    const data = await fetchAPI<{ user: User; accessToken: string }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, name }),
-    });
-    setAccessToken(data.accessToken);
-    return data;
-  },
+// ── User Data ───────────────────────────────────────────────
 
-  async logout(): Promise<void> {
-    try {
-      await fetchAPI('/auth/logout', { method: 'POST' });
-    } catch { /* ignore */ }
-    setAccessToken(null);
-  },
+export function loadUserData(userId: string): UserData {
+  // try new per-user key first
+  const d = read<UserData | null>(KEYS.data(userId), null);
+  if (d) return d;
+  // fallback: try old flat keys (migration)
+  return {
+    clients:      read<Client[]>('psywebnote_clients', []),
+    sessions:     read<Session[]>('psywebnote_sessions', []),
+    appointments: read<Appointment[]>('psywebnote_appointments', []),
+  };
+}
 
-  async refreshSession(): Promise<User | null> {
-    try {
-      const data = await fetchAPI<{ user: User; accessToken: string }>('/auth/refresh', {
-        method: 'POST',
-      });
-      setAccessToken(data.accessToken);
-      return data.user;
-    } catch {
-      return null;
-    }
-  },
+export function saveUserData(userId: string, data: UserData): void {
+  write(KEYS.data(userId), data);
+}
 
-  // Profile
-  async getProfile(): Promise<User> {
-    const data = await fetchAPI<{ user: User }>('/profile');
-    return data.user;
-  },
+// ── Clear everything ────────────────────────────────────────
 
-  async updateProfile(profileData: Partial<User>): Promise<User> {
-    const data = await fetchAPI<{ user: User }>('/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    });
-    return data.user;
-  },
+export function clearAllAppData(): void {
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('psywebnote_'))
+    .forEach(k => localStorage.removeItem(k));
+}
 
-  // Clients
-  async getClients(): Promise<Client[]> {
-    const data = await fetchAPI<{ clients: Client[] }>('/clients');
-    return data.clients;
-  },
+// ── Legacy migration ────────────────────────────────────────
 
-  async createClient(client: Client): Promise<Client> {
-    const data = await fetchAPI<{ client: Client }>('/clients', {
-      method: 'POST',
-      body: JSON.stringify(client),
-    });
-    return data.client;
-  },
+function _tryMigrateProfile(stored: StoredUser): User {
+  // Try old 'psywebnote_user' key
+  const old = read<Partial<User> | null>('psywebnote_user', null);
+  if (old && old.id === stored.id) {
+    return {
+      id: stored.id,
+      email: stored.email,
+      name: stored.name,
+      therapyType: old.therapyType || '',
+      hourlyRate: old.hourlyRate || 5000,
+      currency: old.currency || '₽',
+      packages: old.packages || [],
+      bio: old.bio || '',
+      phone: old.phone || '',
+      avatar: old.avatar,
+      workingHours: old.workingHours || { start: '09:00', end: '18:00' },
+      workingDays: old.workingDays || [1, 2, 3, 4, 5],
+      onboardingComplete: true,
+    };
+  }
+  return {
+    id: stored.id,
+    email: stored.email,
+    name: stored.name,
+    therapyType: '',
+    hourlyRate: 5000,
+    currency: '₽',
+    packages: [
+      { id: '1', name: 'Базовый',   sessions: 4,  price: 20000, discount: 10 },
+      { id: '2', name: 'Стандарт',  sessions: 8,  price: 36000, discount: 15 },
+      { id: '3', name: 'Премиум',   sessions: 12, price: 48000, discount: 20 },
+    ],
+    bio: '', phone: '',
+    workingHours: { start: '09:00', end: '18:00' },
+    workingDays: [1, 2, 3, 4, 5],
+    onboardingComplete: true,
+  };
+}
 
-  async updateClient(id: string, clientData: Partial<Client>): Promise<Client> {
-    const data = await fetchAPI<{ client: Client }>(`/clients/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(clientData),
-    });
-    return data.client;
-  },
+// ── Backward compat stubs ───────────────────────────────────
 
-  async deleteClient(id: string): Promise<void> {
-    await fetchAPI(`/clients/${id}`, { method: 'DELETE' });
-  },
-
-  // Sessions
-  async getSessions(clientId?: string): Promise<Session[]> {
-    const query = clientId ? `?clientId=${clientId}` : '';
-    const data = await fetchAPI<{ sessions: Session[] }>(`/sessions${query}`);
-    return data.sessions;
-  },
-
-  async createSession(session: Session): Promise<Session> {
-    const data = await fetchAPI<{ session: Session }>('/sessions', {
-      method: 'POST',
-      body: JSON.stringify(session),
-    });
-    return data.session;
-  },
-
-  async updateSession(id: string, sessionData: Partial<Session>): Promise<Session> {
-    const data = await fetchAPI<{ session: Session }>(`/sessions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(sessionData),
-    });
-    return data.session;
-  },
-
-  async deleteSession(id: string): Promise<void> {
-    await fetchAPI(`/sessions/${id}`, { method: 'DELETE' });
-  },
-
-  // Appointments
-  async getAppointments(from?: string, to?: string): Promise<Appointment[]> {
-    const params = from && to ? `?from=${from}&to=${to}` : '';
-    const data = await fetchAPI<{ appointments: Appointment[] }>(`/appointments${params}`);
-    return data.appointments;
-  },
-
-  async createAppointment(appointment: Appointment): Promise<Appointment> {
-    const data = await fetchAPI<{ appointment: Appointment }>('/appointments', {
-      method: 'POST',
-      body: JSON.stringify(appointment),
-    });
-    return data.appointment;
-  },
-
-  async updateAppointment(id: string, appointmentData: Partial<Appointment>): Promise<Appointment> {
-    const data = await fetchAPI<{ appointment: Appointment }>(`/appointments/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(appointmentData),
-    });
-    return data.appointment;
-  },
-
-  async deleteAppointment(id: string): Promise<void> {
-    await fetchAPI(`/appointments/${id}`, { method: 'DELETE' });
-  },
-
-  // Batch sync
-  async batchSync(items: {
-    clients?: Client[];
-    sessions?: Session[];
-    appointments?: Appointment[];
-  }): Promise<void> {
-    await fetchAPI('/batch', {
-      method: 'POST',
-      body: JSON.stringify(items),
-    });
-  },
-};
-
-// ── Unified API Interface ───────────────────────────────────
-// Used by AppContext — automatically chooses backend or localStorage
-
-export const api = {
-  // Auth
-  async login(email: string, password: string): Promise<User | null> {
-    if (useBackend) {
-      try {
-        const { user } = await backendApi.login(email, password);
-        return user;
-      } catch {
-        return null;
-      }
-    } else {
-      const users = storage.get<User[]>('users', []);
-      for (const u of users) {
-        if (u.email === email) {
-          const isHashed = /^[a-f0-9]{64}$/.test(u.password || '');
-          let match = false;
-          if (isHashed) {
-            match = await verifyPassword(password, u.password || '');
-          } else {
-            match = u.password === password;
-            if (match) {
-              const hashed = await hashPassword(password);
-              const updated = users.map(x => x.id === u.id ? { ...x, password: hashed } : x);
-              storage.set('users', updated);
-            }
-          }
-          if (match) return u;
-        }
-      }
-      return null;
-    }
-  },
-
-  async register(email: string, password: string, name: string): Promise<User | null> {
-    if (useBackend) {
-      try {
-        const { user } = await backendApi.register(email, password, name);
-        return user;
-      } catch {
-        return null;
-      }
-    } else {
-      const users = storage.get<User[]>('users', []);
-      if (users.find(u => u.email === email)) return null;
-      const hashed = await hashPassword(password);
-      const newUser: User = {
-        id: crypto.randomUUID(), email, password: hashed, name,
-        therapyType: 'Когнитивно-поведенческая терапия (КПТ)',
-        hourlyRate: 5000, currency: '₽',
-        packages: [
-          { id: '1', name: 'Базовый', sessions: 4, price: 20000, discount: 10 },
-          { id: '2', name: 'Стандарт', sessions: 8, price: 36000, discount: 15 },
-          { id: '3', name: 'Премиум', sessions: 12, price: 48000, discount: 20 },
-        ],
-        bio: '', phone: '',
-        workingHours: { start: '09:00', end: '18:00' },
-        workingDays: [1, 2, 3, 4, 5],
-      };
-      storage.set('users', [...users, newUser]);
-      return newUser;
-    }
-  },
-
-  async logout(): Promise<void> {
-    if (useBackend) {
-      await backendApi.logout();
-    }
-  },
-
-  // Data fetching (backend mode)
-  async fetchAllData(): Promise<{ clients: Client[]; sessions: Session[]; appointments: Appointment[] } | null> {
-    if (!useBackend) return null;
-    try {
-      const [clients, sessions, appointments] = await Promise.all([
-        backendApi.getClients(),
-        backendApi.getSessions(),
-        backendApi.getAppointments(),
-      ]);
-      return { clients, sessions, appointments };
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
-      return null;
-    }
-  },
-
-  // Cache operations (always localStorage)
-  saveUser(user: User | null): void {
-    if (user) storage.set('user', user);
-    else storage.remove('user');
-  },
-  getUser(): User | null {
-    return storage.get<User | null>('user', null);
-  },
-  saveClients(clients: Client[]): void {
-    storage.set('clients', clients);
-  },
-  getClients(): Client[] {
-    return storage.get<Client[]>('clients', []);
-  },
-  saveSessions(sessions: Session[]): void {
-    storage.set('sessions', sessions);
-  },
-  getSessions(): Session[] {
-    return storage.get<Session[]>('sessions', []);
-  },
-  saveAppointments(appointments: Appointment[]): void {
-    storage.set('appointments', appointments);
-  },
-  getAppointments(): Appointment[] {
-    return storage.get<Appointment[]>('appointments', []);
-  },
-
-  // Background sync helpers (fire-and-forget with error logging)
-  syncClient(action: 'create' | 'update' | 'delete', client: Client, data?: Partial<Client>): void {
-    if (!useBackend) return;
-    const promise = action === 'create'
-      ? backendApi.createClient(client)
-      : action === 'update'
-        ? backendApi.updateClient(client.id, data || client)
-        : backendApi.deleteClient(client.id);
-    promise.catch(err => console.error(`[Sync] Client ${action} failed:`, err));
-  },
-
-  syncSession(action: 'create' | 'update' | 'delete', session: Session, data?: Partial<Session>): void {
-    if (!useBackend) return;
-    const promise = action === 'create'
-      ? backendApi.createSession(session)
-      : action === 'update'
-        ? backendApi.updateSession(session.id, data || session)
-        : backendApi.deleteSession(session.id);
-    promise.catch(err => console.error(`[Sync] Session ${action} failed:`, err));
-  },
-
-  syncAppointment(action: 'create' | 'update' | 'delete', appointment: Appointment, data?: Partial<Appointment>): void {
-    if (!useBackend) return;
-    const promise = action === 'create'
-      ? backendApi.createAppointment(appointment)
-      : action === 'update'
-        ? backendApi.updateAppointment(appointment.id, data || appointment)
-        : backendApi.deleteAppointment(appointment.id);
-    promise.catch(err => console.error(`[Sync] Appointment ${action} failed:`, err));
-  },
-
-  syncProfile(data: Partial<User>): void {
-    if (!useBackend) return;
-    backendApi.updateProfile(data).catch(err => console.error('[Sync] Profile update failed:', err));
-  },
-};
+export const useBackend = false;
+export const storage = { clear: clearAllAppData };
