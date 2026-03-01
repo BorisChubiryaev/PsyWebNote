@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import Journal from './pages/Journal';
 import VKCallback from './pages/VKCallback';
+import YandexCallback from './pages/YandexCallback';
 import AIFloatingChat from './components/AIFloatingChat';
 import NotificationSystem from './components/NotificationSystem';
 
@@ -67,8 +68,9 @@ function AppRoutes() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* ── VK OAuth callback — не требует auth, обрабатывает сама ── */}
-        <Route path="/auth/vk/callback" element={<VKCallback />} />
+        {/* ── OAuth callbacks — не требуют auth ── */}
+        <Route path="/auth/vk/callback"     element={<VKCallback />} />
+        <Route path="/auth/yandex/callback" element={<YandexCallback />} />
 
         {/* ── Onboarding ── */}
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
