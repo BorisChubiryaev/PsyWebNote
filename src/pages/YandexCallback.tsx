@@ -1,14 +1,15 @@
 /**
  * Yandex OAuth Callback
- * Обмен кода на токен через /api/yandex-token (серверная функция)
- * т.к. client_secret нельзя хранить в браузере
+ *
+ * Шаг 1: Получаем code из URL
+ * Шаг 2: Отправляем на /api/yandex-token (серверная функция Vercel)
+ * Шаг 3: Сервер обменивает code → access_token с client_secret
+ * Шаг 4: Login или Register в PsyWebNote
  */
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import LoadingScreen from '../components/LoadingScreen';
-
-const REDIRECT_URI = `${window.location.origin}/auth/yandex/callback`;
 
 export default function YandexCallback() {
   const navigate            = useNavigate();
@@ -22,57 +23,67 @@ export default function YandexCallback() {
     if (called.current) return;
     called.current = true;
     handleCallback();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCallback = async () => {
-    const code     = params.get('code');
+    /* ── Проверяем ошибки ────────────────────────────────── */
     const errParam = params.get('error');
     const errDesc  = params.get('error_description');
-
     if (errParam) {
       setError(errDesc ? decodeURIComponent(errDesc) : 'Вход через Яндекс отменён');
-      setTimeout(() => navigate('/login'), 3000);
       return;
     }
 
+    const code = params.get('code');
     if (!code) {
       setError('Код авторизации не получен от Яндекс');
-      setTimeout(() => navigate('/login'), 3000);
       return;
     }
 
+    /* ── Проверяем state ────────────────────────────────── */
+    const savedState = sessionStorage.getItem('yandex_state');
+    const state      = params.get('state');
+    if (savedState && state !== savedState) {
+      setError('Ошибка безопасности: неверный state');
+      return;
+    }
+    sessionStorage.removeItem('yandex_state');
+
     try {
-      // ── 1. Обмен кода через серверный прокси ──────────────────
+      /* ── 1. Обмен кода через серверный прокси ──────────── */
       setStep('Получаем токен Яндекс...');
 
-      const tokenRes = await fetch('/api/yandex-token', {
+      const res = await fetch('/api/yandex-token', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ code, redirect_uri: REDIRECT_URI }),
+        body:    JSON.stringify({ code }),
       });
 
-      const tokenData = await tokenRes.json();
-
-      if (tokenData.error) {
-        const desc = tokenData.error_description || tokenData.error;
-        throw new Error(`Яндекс: ${desc}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Сервер вернул ${res.status}: ${text}`);
       }
 
-      if (!tokenData.access_token || !tokenData.user) {
-        throw new Error('Не удалось получить данные от Яндекс. Попробуйте ещё раз.');
+      const data = await res.json();
+
+      if (data.error) {
+        throw new Error(data.error_description || data.error);
       }
 
-      // ── 2. Формируем учётные данные ───────────────────────────
+      if (!data.access_token || !data.user) {
+        throw new Error('Не удалось получить данные от Яндекс');
+      }
+
+      /* ── 2. Данные пользователя ────────────────────────── */
       setStep('Получаем профиль...');
 
-      const { user: yaUser } = tokenData;
-
+      const { user: yaUser } = data;
       const email    = yaUser.email || `yandex_${yaUser.id}@ya.psywebnote.app`;
-      const name     = yaUser.name  || `Яндекс User ${yaUser.id}`;
-      const password = `ya_${yaUser.id}_psyw`;
+      const name     = yaUser.name || 'Яндекс пользователь';
+      const password = `ya_oauth_${yaUser.id}_psywebnote`;
 
-      // ── 3. Вход или регистрация ───────────────────────────────
+      /* ── 3. Вход или регистрация ───────────────────────── */
       setStep('Входим в PsyWebNote...');
 
       const loginRes = await login(email, password);
@@ -81,13 +92,12 @@ export default function YandexCallback() {
       const regRes = await register(email, password, name);
       if (regRes.success) { navigate('/onboarding'); return; }
 
-      throw new Error(regRes.error || 'Не удалось создать аккаунт через Яндекс');
+      throw new Error(regRes.error || 'Не удалось создать аккаунт');
 
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Неизвестная ошибка Яндекс OAuth';
       console.error('[YandexCallback]', msg);
       setError(msg);
-      setTimeout(() => navigate('/login'), 5000);
     }
   };
 
@@ -102,21 +112,17 @@ export default function YandexCallback() {
           <p className="text-gray-600 text-sm mb-4 leading-relaxed break-words">{error}</p>
 
           <div className="bg-yellow-50 rounded-xl p-4 text-left mb-4">
-            <p className="text-xs font-semibold text-yellow-800 mb-2">💡 Что делать:</p>
+            <p className="text-xs font-semibold text-yellow-800 mb-2">💡 Проверьте:</p>
             <ul className="text-xs text-yellow-700 space-y-1">
-              <li>• Убедитесь что YANDEX_CLIENT_ID добавлен в Vercel</li>
-              <li>• Убедитесь что YANDEX_CLIENT_SECRET добавлен в Vercel</li>
-              <li>• Проверьте Callback URL в Яндекс OAuth: <br/>
-                <code className="bg-yellow-100 px-1 rounded text-xs break-all">{REDIRECT_URI}</code>
-              </li>
-              <li>• Права: <code className="bg-yellow-100 px-1 rounded">login:email</code>, <code className="bg-yellow-100 px-1 rounded">login:info</code></li>
+              <li>• <code className="bg-yellow-100 px-1 rounded">YANDEX_CLIENT_ID</code> и <code className="bg-yellow-100 px-1 rounded">YANDEX_CLIENT_SECRET</code> в Vercel</li>
+              <li>• Callback URL в Яндексе: <code className="bg-yellow-100 px-1 rounded text-xs break-all">{window.location.origin}/auth/yandex/callback</code></li>
+              <li>• Права: login:email, login:info, login:avatar</li>
             </ul>
           </div>
 
-          <p className="text-xs text-gray-400 mb-4">Перенаправляем на страницу входа через 5 сек...</p>
           <button
             onClick={() => navigate('/login')}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
           >
             Вернуться к входу
           </button>

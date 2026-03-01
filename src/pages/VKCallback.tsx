@@ -1,7 +1,10 @@
 /**
  * VK OAuth 2.1 Callback
- * Обмен кода на токен происходит через /api/vk-token (серверная функция)
- * чтобы обойти CORS-ограничения id.vk.com
+ *
+ * Шаг 1: Получаем `code` из URL
+ * Шаг 2: Отправляем на /api/vk-token (серверная Vercel Function)
+ * Шаг 3: Сервер обменивает code → access_token + user_info
+ * Шаг 4: Login или Register в PsyWebNote
  */
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -12,111 +15,114 @@ const VK_APP_ID    = import.meta.env.VITE_VK_APP_ID || '';
 const REDIRECT_URI = `${window.location.origin}/auth/vk/callback`;
 
 export default function VKCallback() {
-  const navigate              = useNavigate();
-  const [params]              = useSearchParams();
-  const { login, register }   = useApp();
-  const [error, setError]     = useState('');
-  const [step, setStep]       = useState('Проверяем данные...');
-  const called                = useRef(false);
+  const navigate            = useNavigate();
+  const [params]            = useSearchParams();
+  const { login, register } = useApp();
+  const [error, setError]   = useState('');
+  const [step, setStep]     = useState('Проверяем данные...');
+  const called              = useRef(false);
 
   useEffect(() => {
     if (called.current) return;
     called.current = true;
     handleCallback();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCallback = async () => {
-    const code      = params.get('code');
-    const state     = params.get('state');
-    const errParam  = params.get('error');
-    const errDesc   = params.get('error_description');
-
+    /* ── Проверяем ошибки от VK ─────────────────────────── */
+    const errParam = params.get('error');
+    const errDesc  = params.get('error_description');
     if (errParam) {
       setError(errDesc ? decodeURIComponent(errDesc) : 'Вход через ВКонтакте отменён');
-      setTimeout(() => navigate('/login'), 3000);
       return;
     }
 
+    const code = params.get('code');
     if (!code) {
       setError('Код авторизации не получен от VK');
-      setTimeout(() => navigate('/login'), 3000);
       return;
     }
 
+    /* ── Проверяем state ────────────────────────────────── */
     const savedState = sessionStorage.getItem('vk_state');
-    const verifier   = sessionStorage.getItem('vk_code_verifier');
-
-    // device_id берём из localStorage (постоянный) — тот же что был при авторизации
-    const deviceId   =
-      localStorage.getItem('vk_device_id_persistent') ||
-      sessionStorage.getItem('vk_device_id_session') ||
-      '';
-
+    const state      = params.get('state');
     if (state !== savedState) {
       setError('Ошибка безопасности: неверный state. Попробуйте снова.');
-      setTimeout(() => navigate('/login'), 3000);
       return;
     }
 
-    if (!verifier || !deviceId) {
-      setError('Данные сессии потеряны. Попробуйте нажать кнопку VK ещё раз.');
-      setTimeout(() => navigate('/login'), 3000);
+    /* ── Получаем сохранённые данные ────────────────────── */
+    const codeVerifier = sessionStorage.getItem('vk_code_verifier');
+    const deviceId     = sessionStorage.getItem('vk_device_id')
+                      || localStorage.getItem('psywebnote_vk_device_id')
+                      || '';
+
+    if (!codeVerifier) {
+      setError('Данные сессии потеряны (code_verifier). Попробуйте нажать кнопку VK ещё раз.');
+      return;
+    }
+    if (!deviceId) {
+      setError('Данные сессии потеряны (device_id). Попробуйте нажать кнопку VK ещё раз.');
       return;
     }
 
-    // Очищаем sessionStorage
+    // Очищаем
     sessionStorage.removeItem('vk_code_verifier');
     sessionStorage.removeItem('vk_state');
-    sessionStorage.removeItem('vk_device_id_session');
+    sessionStorage.removeItem('vk_device_id');
 
     try {
-      // ── 1. Обмен кода через наш серверный прокси ──────────────
+      /* ── 1. Обмен кода через серверный прокси ──────────── */
       setStep('Получаем токен VK...');
 
-      const tokenRes = await fetch('/api/vk-token', {
+      const res = await fetch('/api/vk-token', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           code,
           redirect_uri:  REDIRECT_URI,
-          code_verifier: verifier,
+          code_verifier: codeVerifier,
           device_id:     deviceId,
           state:         state ?? '',
         }),
       });
 
-      const tokenData = await tokenRes.json();
-
-      if (tokenData.error) {
-        // Формируем читаемое сообщение об ошибке
-        const desc = tokenData.error_description || tokenData.error;
-        throw new Error(`VK: ${decodeURIComponent(desc)}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Сервер вернул ${res.status}: ${text}`);
       }
 
-      if (!tokenData.access_token) {
-        throw new Error('Токен не получен от VK. Попробуйте ещё раз.');
+      const data = await res.json();
+
+      if (data.error) {
+        throw new Error(data.error_description || data.error);
       }
 
-      // ── 2. Получаем данные пользователя (из ответа прокси) ────
+      if (!data.access_token) {
+        throw new Error('Токен не получен от VK');
+      }
+
+      /* ── 2. Данные пользователя ────────────────────────── */
       setStep('Получаем профиль...');
 
-      const vkUser = tokenData.user_info;
-      if (!vkUser?.user_id) throw new Error('Не удалось получить профиль VK');
+      const vkUser = data.user_info;
+      if (!vkUser?.user_id && !vkUser?.id) {
+        throw new Error('Не удалось получить профиль VK');
+      }
 
-      // ── 3. Формируем учётные данные ───────────────────────────
-      const email = tokenData.email
+      const vkId = vkUser.user_id || vkUser.id;
+      const email = data.email
         ?? vkUser.email
-        ?? `vk_${vkUser.user_id}@vk.psywebnote.app`;
+        ?? `vk_${vkId}@vk.psywebnote.app`;
 
       const name = [vkUser.first_name, vkUser.last_name]
         .filter(Boolean).join(' ')
-        || `VK User ${vkUser.user_id}`;
+        || `VK User ${vkId}`;
 
-      // Детерминированный пароль из VK identity (не меняется между входами)
-      const password = `vk_${vkUser.user_id}_${VK_APP_ID}_psyw`;
+      const password = `vk_oauth_${vkId}_${VK_APP_ID}_psywebnote`;
 
-      // ── 4. Вход или регистрация ───────────────────────────────
+      /* ── 3. Вход или регистрация ───────────────────────── */
       setStep('Входим в PsyWebNote...');
 
       const loginRes = await login(email, password);
@@ -125,13 +131,12 @@ export default function VKCallback() {
       const regRes = await register(email, password, name);
       if (regRes.success) { navigate('/onboarding'); return; }
 
-      throw new Error(regRes.error || 'Не удалось создать аккаунт через VK');
+      throw new Error(regRes.error || 'Не удалось создать аккаунт');
 
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Неизвестная ошибка VK OAuth';
       console.error('[VKCallback]', msg);
       setError(msg);
-      setTimeout(() => navigate('/login'), 5000);
     }
   };
 
@@ -146,16 +151,14 @@ export default function VKCallback() {
           <p className="text-gray-600 text-sm mb-4 leading-relaxed break-words">{error}</p>
 
           <div className="bg-blue-50 rounded-xl p-4 text-left mb-4">
-            <p className="text-xs font-semibold text-blue-800 mb-2">💡 Что делать:</p>
+            <p className="text-xs font-semibold text-blue-800 mb-2">💡 Проверьте:</p>
             <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Убедитесь что VITE_VK_APP_ID добавлен в Vercel</li>
-              <li>• Убедитесь что VK_APP_SECRET добавлен в Vercel (если приложение конфиденциальное)</li>
-              <li>• Проверьте Redirect URL в настройках VK: <br/><code className="bg-blue-100 px-1 rounded text-xs">{REDIRECT_URI}</code></li>
-              <li>• Попробуйте войти заново</li>
+              <li>• Переменные <code className="bg-blue-100 px-1 rounded">VITE_VK_APP_ID</code>, <code className="bg-blue-100 px-1 rounded">VK_APP_ID</code>, <code className="bg-blue-100 px-1 rounded">VK_APP_SECRET</code> в Vercel</li>
+              <li>• Redirect URL в VK: <code className="bg-blue-100 px-1 rounded text-xs break-all">{REDIRECT_URI}</code></li>
+              <li>• Базовый домен в VK: <code className="bg-blue-100 px-1 rounded">{window.location.hostname}</code></li>
             </ul>
           </div>
 
-          <p className="text-xs text-gray-400 mb-4">Перенаправляем на страницу входа через 5 сек...</p>
           <button
             onClick={() => navigate('/login')}
             className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
