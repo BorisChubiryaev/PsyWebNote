@@ -1,8 +1,12 @@
 /**
- * VKontakte OAuth 2.1 (PKCE) — fixed device_id format
+ * VKontakte OAuth 2.1 (PKCE) — правильная реализация
  *
- * VK requires device_id to be exactly 16 random bytes encoded as hex (32 chars),
- * NOT a UUID with dashes.
+ * Ключевые моменты по документации VK ID:
+ * 1. device_id — постоянный идентификатор устройства, хранится в localStorage
+ *    (НЕ генерировать заново при каждом входе!)
+ * 2. Обмен кода на токен — только через серверный прокси (/api/vk-token)
+ *    (браузерные запросы к id.vk.com/oauth2/auth блокируются CORS)
+ * 3. code_verifier / code_challenge — PKCE S256
  */
 
 import { Loader2 } from 'lucide-react';
@@ -20,20 +24,17 @@ function toBase64URL(buffer: ArrayBuffer): string {
     .replace(/=/g, '');
 }
 
-/** 32 random bytes → base64url (code verifier) */
 async function makeCodeVerifier(): Promise<string> {
   const buf = new Uint8Array(32);
   crypto.getRandomValues(buf);
   return toBase64URL(buf.buffer);
 }
 
-/** SHA-256(verifier) → base64url (code challenge) */
 async function makeCodeChallenge(verifier: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
   return toBase64URL(digest);
 }
 
-/** 16 random bytes → CSRFS state (base64url) */
 function makeState(): string {
   const buf = new Uint8Array(16);
   crypto.getRandomValues(buf);
@@ -41,13 +42,22 @@ function makeState(): string {
 }
 
 /**
- * VK device_id: exactly 16 random bytes encoded as a 32-char lowercase hex string.
- * Must NOT contain dashes or other characters.
+ * device_id — постоянный ID устройства.
+ * Согласно документации VK ID, это значение должно быть стабильным
+ * между сессиями одного браузера. Храним в localStorage.
+ * Формат: 16 байт hex = 32 символа (строчные).
  */
-function makeDeviceId(): string {
+function getOrCreateDeviceId(): string {
+  const STORAGE_KEY = 'vk_device_id_persistent';
+  let id = localStorage.getItem(STORAGE_KEY);
+  if (id && /^[0-9a-f]{32}$/.test(id)) return id;
+
+  // Создаём один раз и сохраняем навсегда
   const buf = new Uint8Array(16);
   crypto.getRandomValues(buf);
-  return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+  id = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+  localStorage.setItem(STORAGE_KEY, id);
+  return id;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -62,20 +72,22 @@ export default function VKLoginButton({ disabled, label = 'Войти через
 
   const handleClick = async () => {
     if (!VK_APP_ID) {
-      alert('VK App ID не настроен. Добавьте VITE_VK_APP_ID в .env');
+      alert('VK App ID не настроен. Добавьте VITE_VK_APP_ID в .env и в Vercel Environment Variables.');
       return;
     }
 
     setLoading(true);
     try {
-      const verifier   = await makeCodeVerifier();
-      const challenge  = await makeCodeChallenge(verifier);
-      const state      = makeState();
-      const deviceId   = makeDeviceId();   // ← правильный формат: 32 hex chars
+      const verifier  = await makeCodeVerifier();
+      const challenge = await makeCodeChallenge(verifier);
+      const state     = makeState();
+      const deviceId  = getOrCreateDeviceId(); // ← постоянный, не меняется
 
+      // Сохраняем данные для callback
       sessionStorage.setItem('vk_code_verifier', verifier);
       sessionStorage.setItem('vk_state',         state);
-      sessionStorage.setItem('vk_device_id',     deviceId);
+      // device_id берётся из localStorage в callback — дополнительно дублируем в session
+      sessionStorage.setItem('vk_device_id_session', deviceId);
 
       const params = new URLSearchParams({
         response_type:         'code',
@@ -85,7 +97,7 @@ export default function VKLoginButton({ disabled, label = 'Войти через
         state,
         code_challenge:        challenge,
         code_challenge_method: 'S256',
-        device_id:             deviceId,   // ← передаём на этапе авторизации
+        device_id:             deviceId,
       });
 
       window.location.href = `https://id.vk.com/authorize?${params}`;
@@ -101,7 +113,7 @@ export default function VKLoginButton({ disabled, label = 'Войти через
       onClick={handleClick}
       disabled={disabled || loading || !VK_APP_ID}
       className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[#0077FF]/30 bg-[#0077FF]/5 hover:bg-[#0077FF]/10 rounded-2xl transition-all disabled:opacity-50 font-medium text-[#0077FF]"
-      title={!VK_APP_ID ? 'Добавьте VITE_VK_APP_ID в .env' : undefined}
+      title={!VK_APP_ID ? 'Добавьте VITE_VK_APP_ID в настройки' : undefined}
     >
       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <VKIcon />}
       {loading ? 'Переходим в VK...' : label}

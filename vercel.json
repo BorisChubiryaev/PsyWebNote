@@ -1,17 +1,20 @@
 {
   "rewrites": [
-    { "source": "/auth/vk/callback",     "destination": "/index.html" },
-    { "source": "/auth/yandex/callback", "destination": "/index.html" },
-    { "source": "/(.*)",                  "destination": "/index.html" }
+    { "source": "/api/vk-token",           "destination": "/api/vk-token.js" },
+    { "source": "/api/yandex-token",       "destination": "/api/yandex-token.js" },
+    { "source": "/auth/vk/callback",       "destination": "/index.html" },
+    { "source": "/auth/yandex/callback",   "destination": "/index.html" },
+    { "source": "/auth/google/callback",   "destination": "/index.html" },
+    { "source": "/(.*)",                   "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options",        "value": "DENY" },
-        { "key": "X-XSS-Protection",       "value": "1; mode=block" },
-        { "key": "Referrer-Policy",        "value": "strict-origin-when-cross-origin" }
+        { "key": "X-Content-Type-Options",  "value": "nosniff" },
+        { "key": "X-Frame-Options",         "value": "DENY" },
+        { "key": "X-XSS-Protection",        "value": "1; mode=block" },
+        { "key": "Referrer-Policy",         "value": "strict-origin-when-cross-origin" }
       ]
     },
     {
