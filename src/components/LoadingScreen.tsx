@@ -1,4 +1,8 @@
-export default function LoadingScreen() {
+interface Props {
+  subtitle?: string;
+}
+
+export default function LoadingScreen({ subtitle }: Props) {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center z-[100]">
       {/* Logo */}
@@ -16,13 +20,13 @@ export default function LoadingScreen() {
       <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
         PsyWebNote
       </h1>
-      <p className="text-gray-400 text-sm mb-10">Платформа для психологов</p>
+      <p className="text-gray-400 text-sm mb-10">
+        {subtitle ?? 'Платформа для психологов'}
+      </p>
 
       {/* Loading bar */}
       <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-loading-bar"
-        />
+        <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-loading-bar" />
       </div>
       <p className="text-xs text-gray-400 mt-3">Загружаем ваш профиль...</p>
 

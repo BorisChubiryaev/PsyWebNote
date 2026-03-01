@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp } from './context/AppContext';
 import LoadingScreen from './components/LoadingScreen';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Onboarding from './pages/Onboarding';
@@ -15,16 +16,16 @@ import Calendar from './pages/Calendar';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import Journal from './pages/Journal';
+import VKCallback from './pages/VKCallback';
 import AIFloatingChat from './components/AIFloatingChat';
 import NotificationSystem from './components/NotificationSystem';
 
-// Google Client ID — замените на свой из Google Cloud Console
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1234567890-placeholder.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder.apps.googleusercontent.com';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useApp();
   if (loading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -37,9 +38,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user } = useApp();
-  if (user && !user.onboardingComplete) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  if (user && !user.onboardingComplete) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
@@ -56,20 +55,25 @@ function GlobalNotifications() {
 function AppRoutes() {
   const { isAuthenticated, user, loading } = useApp();
 
-  // Показываем красивый loading экран пока проверяем сессию
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <>
       {isAuthenticated && user?.onboardingComplete && <GlobalNotifications />}
       {isAuthenticated && user?.onboardingComplete && <AIFloatingChat />}
       <Routes>
-        <Route path="/login"    element={<PublicRoute><Login /></PublicRoute>} />
+        {/* ── Public ── */}
+        <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+
+        {/* ── VK OAuth callback — не требует auth, обрабатывает сама ── */}
+        <Route path="/auth/vk/callback" element={<VKCallback />} />
+
+        {/* ── Onboarding ── */}
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
+        {/* ── App ── */}
         <Route path="/dashboard" element={<ProtectedRoute><OnboardingGuard><Dashboard /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/clients"   element={<ProtectedRoute><OnboardingGuard><Clients /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/clients/new" element={<ProtectedRoute><OnboardingGuard><ClientForm /></OnboardingGuard></ProtectedRoute>} />
@@ -86,8 +90,7 @@ function AppRoutes() {
         <Route path="/reports"  element={<ProtectedRoute><OnboardingGuard><Reports /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/profile"  element={<ProtectedRoute><OnboardingGuard><Profile /></OnboardingGuard></ProtectedRoute>} />
 
-        <Route path="/"  element={<Navigate to="/dashboard" replace />} />
-        <Route path="*"  element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );
