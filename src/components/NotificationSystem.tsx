@@ -68,17 +68,17 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
   const session = sessions.find(s => s.clientId === clientId && s.date === aptDate && s.time === aptTime);
   const appointment = appointments.find(a => a.clientId === clientId && a.date === aptDate && a.time === aptTime);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
     let sessionId = session?.id;
-    if (!sessionId && appointment) sessionId = ensureSessionForAppointment(appointment);
+    if (!sessionId && appointment) sessionId = await ensureSessionForAppointment(appointment);
 
     const wasCompleted = session?.status === 'completed';
     const isNowCompleted = status === 'completed';
 
     if (sessionId) {
       const existing = sessions.find(s => s.id === sessionId);
-      updateSession(sessionId, {
+      await updateSession(sessionId, {
         status,
         notes: existing?.notes ? `${existing.notes}\n\n--- Быстрая заметка ---\n${quickNote}` : quickNote,
         mood: clientMood,
@@ -86,12 +86,12 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
       });
     }
 
-    if (appointment) updateAppointment(appointment.id, { status });
+    if (appointment) await updateAppointment(appointment.id, { status });
 
     if (!wasCompleted && isNowCompleted) {
       const client = clients.find(c => c.id === clientId);
       if (client?.packageId && (client.remainingSessions ?? 0) > 0) {
-        updateClient(clientId, { remainingSessions: (client.remainingSessions ?? 1) - 1 });
+        await updateClient(clientId, { remainingSessions: (client.remainingSessions ?? 1) - 1 });
       }
     }
 
@@ -99,9 +99,9 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
     onClose();
   };
 
-  const handleOpenFull = () => {
+  const handleOpenFull = async () => {
     let sessionId = session?.id;
-    if (!sessionId && appointment) sessionId = ensureSessionForAppointment(appointment);
+    if (!sessionId && appointment) sessionId = await ensureSessionForAppointment(appointment);
     if (sessionId) navigate(`/clients/${clientId}/sessions/${sessionId}/edit`);
     onClose();
   };

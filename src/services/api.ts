@@ -1,67 +1,15 @@
 /**
- * PsyWebNote — Auth & Storage Layer
- * Clean, no duplication, per-user data isolation
+ * PsyWebNote — Data Layer
+ * Primary:  Supabase (PostgreSQL + Auth)
+ * Fallback: localStorage (if Supabase unavailable)
  */
 
+import { supabase } from './supabase';
 import { User, Client, Session, Appointment } from '../types';
 
-// ── Storage Keys ────────────────────────────────────────────
-
-const KEYS = {
-  USERS:        'psywebnote_users',
-  CURRENT_ID:   'psywebnote_current_user_id',
-  profile: (id: string) => `psywebnote_profile_${id}`,
-  data:    (id: string) => `psywebnote_data_${id}`,
-};
-
-// ── Safe JSON helpers ───────────────────────────────────────
-
-function read<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function write<T>(key: string, value: T): void {
-  try { localStorage.setItem(key, JSON.stringify(value)); }
-  catch (e) { console.error('[Storage] write failed:', e); }
-}
-
-function remove(key: string): void {
-  try { localStorage.removeItem(key); } catch { /* ignore */ }
-}
-
-// ── Password Hashing ────────────────────────────────────────
-
-export async function hashPassword(password: string): Promise<string> {
-  const enc = new TextEncoder();
-  const buf = await crypto.subtle.digest('SHA-256', enc.encode(password + 'psywebnote_salt_2024'));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return (await hashPassword(password)) === hash;
-}
-
-// ── Types ───────────────────────────────────────────────────
-
-interface StoredUser {
-  id: string;
-  email: string;
-  passwordHash: string;
-  name: string;
-  createdAt: string;
-}
-
-export interface UserData {
-  clients: Client[];
-  sessions: Session[];
-  appointments: Appointment[];
-}
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 
 export interface AuthResult {
   success: boolean;
@@ -69,7 +17,92 @@ export interface AuthResult {
   error?: string;
 }
 
-// ── Auth ────────────────────────────────────────────────────
+export interface UserData {
+  clients:      Client[];
+  sessions:     Session[];
+  appointments: Appointment[];
+}
+
+// ─────────────────────────────────────────────────────────────
+// DB → Frontend mappers
+// ─────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapProfile(row: any): User {
+  return {
+    id:                 row.id,
+    email:              row.email,
+    name:               row.name ?? '',
+    avatar:             row.avatar ?? undefined,
+    therapyType:        row.therapy_type ?? '',
+    hourlyRate:         Number(row.hourly_rate ?? 5000),
+    currency:           row.currency ?? '₽',
+    bio:                row.bio ?? '',
+    phone:              row.phone ?? '',
+    workingHours:       row.working_hours ?? { start: '09:00', end: '18:00' },
+    workingDays:        row.working_days ?? [1, 2, 3, 4, 5],
+    packages:           row.packages ?? [],
+    onboardingComplete: row.onboarding_complete ?? false,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapClient(row: any): Client {
+  return {
+    id:                row.id,
+    name:              row.name,
+    phone:             row.phone ?? undefined,
+    email:             row.email ?? undefined,
+    avatar:            row.avatar ?? undefined,
+    notes:             row.notes ?? '',
+    socialLinks:       row.social_links ?? [],
+    packageId:         row.package_id ?? undefined,
+    remainingSessions: row.remaining_sessions ?? 0,
+    schedules:         row.schedules ?? [],
+    meetingLink:       row.meeting_link ?? undefined,
+    isOnline:          row.is_online ?? false,
+    status:            row.status ?? 'active',
+    createdAt:         row.created_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSession(row: any): Session {
+  return {
+    id:               row.id,
+    clientId:         row.client_id,
+    date:             typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
+    time:             row.time,
+    duration:         row.duration ?? 60,
+    status:           row.status ?? 'scheduled',
+    notes:            row.notes ?? '',
+    mood:             row.mood ?? undefined,
+    topics:           row.topics ?? [],
+    homework:         row.homework ?? undefined,
+    nextSessionGoals: row.next_session_goals ?? undefined,
+    isPaid:           row.is_paid ?? false,
+    amount:           Number(row.amount ?? 0),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapAppointment(row: any): Appointment {
+  return {
+    id:          row.id,
+    clientId:    row.client_id,
+    clientName:  row.client_name,
+    date:        typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
+    time:        row.time,
+    duration:    row.duration ?? 60,
+    status:      row.status ?? 'scheduled',
+    isOnline:    row.is_online ?? false,
+    meetingLink: row.meeting_link ?? undefined,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────────────────────────
 
 export async function authRegister(
   email: string,
@@ -86,158 +119,379 @@ export async function authRegister(
   if (password.length < 6)
     return { success: false, user: null, error: 'Пароль должен быть не менее 6 символов' };
 
-  const stored = read<StoredUser[]>(KEYS.USERS, []);
-  if (stored.some(u => u.email === e))
-    return { success: false, user: null, error: 'Пользователь с таким email уже существует' };
+  const { data, error } = await supabase.auth.signUp({
+    email: e,
+    password,
+    options: { data: { name: n } },
+  });
 
-  const id = crypto.randomUUID();
-  const passwordHash = await hashPassword(password);
+  if (error) {
+    // Supabase error messages → русские
+    const msg = error.message.toLowerCase();
+    if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('email'))
+      return { success: false, user: null, error: 'Пользователь с таким email уже существует' };
+    if (msg.includes('password'))
+      return { success: false, user: null, error: 'Пароль должен быть не менее 6 символов' };
+    return { success: false, user: null, error: 'Ошибка регистрации: ' + error.message };
+  }
 
-  const storedUser: StoredUser = { id, email: e, passwordHash, name: n, createdAt: new Date().toISOString() };
-  const profile: User = {
-    id, email: e, name: n,
-    therapyType: '',
-    hourlyRate: 5000,
-    currency: '₽',
-    packages: [
-      { id: '1', name: 'Базовый',   sessions: 4,  price: 20000, discount: 10 },
-      { id: '2', name: 'Стандарт',  sessions: 8,  price: 36000, discount: 15 },
-      { id: '3', name: 'Премиум',   sessions: 12, price: 48000, discount: 20 },
-    ],
-    bio: '', phone: '',
-    workingHours: { start: '09:00', end: '18:00' },
-    workingDays: [1, 2, 3, 4, 5],
-    onboardingComplete: false,
-  };
-  const userData: UserData = { clients: [], sessions: [], appointments: [] };
+  if (!data.user)
+    return { success: false, user: null, error: 'Ошибка создания пользователя' };
 
-  write(KEYS.USERS, [...stored, storedUser]);
-  write(KEYS.profile(id), profile);
-  write(KEYS.data(id), userData);
-  write(KEYS.CURRENT_ID, id);
+  // Wait a moment for the trigger to create the profile
+  await new Promise(r => setTimeout(r, 800));
 
+  // Fetch or construct profile
+  const profile = await _fetchOrCreateProfile(data.user.id, e, n);
   return { success: true, user: profile };
 }
 
 export async function authLogin(email: string, password: string): Promise<AuthResult> {
   const e = email.trim().toLowerCase();
-  if (!e || !password) return { success: false, user: null, error: 'Заполните все поля' };
+  if (!e || !password)
+    return { success: false, user: null, error: 'Заполните все поля' };
 
-  const stored = read<StoredUser[]>(KEYS.USERS, []);
-  const found = stored.find(u => u.email === e);
-  if (!found) return { success: false, user: null, error: 'Неверный email или пароль' };
+  const { data, error } = await supabase.auth.signInWithPassword({ email: e, password });
 
-  // Verify (support legacy plain-text)
-  let ok = false;
-  if (found.passwordHash.length === 64 && /^[a-f0-9]+$/.test(found.passwordHash)) {
-    ok = await verifyPassword(password, found.passwordHash);
-  } else {
-    ok = found.passwordHash === password;
-    if (ok) {
-      // upgrade to hash
-      const newHash = await hashPassword(password);
-      const updated = stored.map(u =>
-        u.id === found.id ? { ...u, passwordHash: newHash } : u
-      );
-      write(KEYS.USERS, updated);
-    }
-  }
-  if (!ok) return { success: false, user: null, error: 'Неверный email или пароль' };
-
-  // Load or migrate profile
-  let profile = read<User | null>(KEYS.profile(found.id), null);
-  if (!profile) {
-    profile = _tryMigrateProfile(found);
-    write(KEYS.profile(found.id), profile);
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('wrong'))
+      return { success: false, user: null, error: 'Неверный email или пароль' };
+    if (msg.includes('email not confirmed'))
+      return { success: false, user: null, error: 'Подтвердите email (проверьте почту)' };
+    return { success: false, user: null, error: 'Ошибка входа: ' + error.message };
   }
 
-  write(KEYS.CURRENT_ID, found.id);
+  if (!data.user)
+    return { success: false, user: null, error: 'Ошибка входа' };
+
+  const profile = await _fetchOrCreateProfile(
+    data.user.id,
+    data.user.email ?? e,
+    data.user.user_metadata?.name ?? '',
+  );
   return { success: true, user: profile };
 }
 
-export function authLogout(): void {
-  remove(KEYS.CURRENT_ID);
+export async function authLogout(): Promise<void> {
+  await supabase.auth.signOut();
 }
 
-export function authGetCurrentUser(): User | null {
-  const id = read<string | null>(KEYS.CURRENT_ID, null);
-  if (!id) return null;
-  return read<User | null>(KEYS.profile(id), null);
+export async function authGetCurrentUser(): Promise<User | null> {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session?.user) return null;
+  const u = data.session.user;
+  return _fetchOrCreateProfile(u.id, u.email ?? '', u.user_metadata?.name ?? '');
 }
 
-export function authUpdateProfile(userId: string, data: Partial<User>): void {
-  const cur = read<User | null>(KEYS.profile(userId), null);
-  if (cur) write(KEYS.profile(userId), { ...cur, ...data });
+export async function authUpdateProfile(userId: string, updates: Partial<User>): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (updates.name               !== undefined) payload.name                = updates.name;
+  if (updates.avatar             !== undefined) payload.avatar              = updates.avatar;
+  if (updates.therapyType        !== undefined) payload.therapy_type        = updates.therapyType;
+  if (updates.hourlyRate         !== undefined) payload.hourly_rate         = updates.hourlyRate;
+  if (updates.currency           !== undefined) payload.currency            = updates.currency;
+  if (updates.bio                !== undefined) payload.bio                 = updates.bio;
+  if (updates.phone              !== undefined) payload.phone               = updates.phone;
+  if (updates.workingHours       !== undefined) payload.working_hours       = updates.workingHours;
+  if (updates.workingDays        !== undefined) payload.working_days        = updates.workingDays;
+  if (updates.packages           !== undefined) payload.packages            = updates.packages;
+  if (updates.onboardingComplete !== undefined) payload.onboarding_complete = updates.onboardingComplete;
+
+  if (Object.keys(payload).length === 0) return;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(payload)
+    .eq('id', userId);
+
+  if (error) console.error('[Profile] update error:', error.message);
 }
 
-// ── User Data ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Clients
+// ─────────────────────────────────────────────────────────────
 
-export function loadUserData(userId: string): UserData {
-  // try new per-user key first
-  const d = read<UserData | null>(KEYS.data(userId), null);
-  if (d) return d;
-  // fallback: try old flat keys (migration)
+export async function fetchClients(userId: string): Promise<Client[]> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+
+  if (error) { console.error('[Clients] fetch error:', error.message); return []; }
+  return (data ?? []).map(mapClient);
+}
+
+export async function insertClient(userId: string, client: Omit<Client, 'id' | 'createdAt'>): Promise<Client | null> {
+  const { data, error } = await supabase
+    .from('clients')
+    .insert({
+      user_id:            userId,
+      name:               client.name,
+      phone:              client.phone ?? null,
+      email:              client.email ?? null,
+      avatar:             client.avatar ?? null,
+      notes:              client.notes,
+      social_links:       client.socialLinks,
+      package_id:         client.packageId ?? null,
+      remaining_sessions: client.remainingSessions,
+      schedules:          client.schedules,
+      meeting_link:       client.meetingLink ?? null,
+      is_online:          client.isOnline,
+      status:             client.status,
+    })
+    .select()
+    .single();
+
+  if (error) { console.error('[Clients] insert error:', error.message); return null; }
+  return mapClient(data);
+}
+
+export async function updateClientDb(clientId: string, data: Partial<Client>): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (data.name               !== undefined) payload.name               = data.name;
+  if (data.phone              !== undefined) payload.phone              = data.phone;
+  if (data.email              !== undefined) payload.email              = data.email;
+  if (data.avatar             !== undefined) payload.avatar             = data.avatar;
+  if (data.notes              !== undefined) payload.notes              = data.notes;
+  if (data.socialLinks        !== undefined) payload.social_links       = data.socialLinks;
+  if (data.packageId          !== undefined) payload.package_id         = data.packageId;
+  if (data.remainingSessions  !== undefined) payload.remaining_sessions = data.remainingSessions;
+  if (data.schedules          !== undefined) payload.schedules          = data.schedules;
+  if (data.meetingLink        !== undefined) payload.meeting_link       = data.meetingLink;
+  if (data.isOnline           !== undefined) payload.is_online          = data.isOnline;
+  if (data.status             !== undefined) payload.status             = data.status;
+
+  const { error } = await supabase.from('clients').update(payload).eq('id', clientId);
+  if (error) console.error('[Clients] update error:', error.message);
+}
+
+export async function deleteClientDb(clientId: string): Promise<void> {
+  const { error } = await supabase.from('clients').delete().eq('id', clientId);
+  if (error) console.error('[Clients] delete error:', error.message);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sessions
+// ─────────────────────────────────────────────────────────────
+
+export async function fetchSessions(userId: string): Promise<Session[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false });
+
+  if (error) { console.error('[Sessions] fetch error:', error.message); return []; }
+  return (data ?? []).map(mapSession);
+}
+
+export async function insertSession(userId: string, session: Omit<Session, 'id'>): Promise<Session | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .insert({
+      user_id:            userId,
+      client_id:          session.clientId,
+      date:               session.date,
+      time:               session.time,
+      duration:           session.duration,
+      status:             session.status,
+      notes:              session.notes,
+      mood:               session.mood ?? null,
+      topics:             session.topics,
+      homework:           session.homework ?? null,
+      next_session_goals: session.nextSessionGoals ?? null,
+      is_paid:            session.isPaid,
+      amount:             session.amount,
+    })
+    .select()
+    .single();
+
+  if (error) { console.error('[Sessions] insert error:', error.message); return null; }
+  return mapSession(data);
+}
+
+export async function updateSessionDb(sessionId: string, data: Partial<Session>): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (data.date               !== undefined) payload.date               = data.date;
+  if (data.time               !== undefined) payload.time               = data.time;
+  if (data.duration           !== undefined) payload.duration           = data.duration;
+  if (data.status             !== undefined) payload.status             = data.status;
+  if (data.notes              !== undefined) payload.notes              = data.notes;
+  if (data.mood               !== undefined) payload.mood               = data.mood;
+  if (data.topics             !== undefined) payload.topics             = data.topics;
+  if (data.homework           !== undefined) payload.homework           = data.homework;
+  if (data.nextSessionGoals   !== undefined) payload.next_session_goals = data.nextSessionGoals;
+  if (data.isPaid             !== undefined) payload.is_paid            = data.isPaid;
+  if (data.amount             !== undefined) payload.amount             = data.amount;
+
+  const { error } = await supabase.from('sessions').update(payload).eq('id', sessionId);
+  if (error) console.error('[Sessions] update error:', error.message);
+}
+
+export async function deleteSessionDb(sessionId: string): Promise<void> {
+  const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
+  if (error) console.error('[Sessions] delete error:', error.message);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Appointments
+// ─────────────────────────────────────────────────────────────
+
+export async function fetchAppointments(userId: string): Promise<Appointment[]> {
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: true });
+
+  if (error) { console.error('[Appointments] fetch error:', error.message); return []; }
+  return (data ?? []).map(mapAppointment);
+}
+
+export async function insertAppointment(userId: string, apt: Omit<Appointment, 'id'>): Promise<Appointment | null> {
+  const { data, error } = await supabase
+    .from('appointments')
+    .insert({
+      user_id:     userId,
+      client_id:   apt.clientId,
+      client_name: apt.clientName,
+      date:        apt.date,
+      time:        apt.time,
+      duration:    apt.duration,
+      status:      apt.status,
+      is_online:   apt.isOnline,
+      meeting_link: apt.meetingLink ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) { console.error('[Appointments] insert error:', error.message); return null; }
+  return mapAppointment(data);
+}
+
+export async function updateAppointmentDb(aptId: string, data: Partial<Appointment>): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (data.clientName  !== undefined) payload.client_name  = data.clientName;
+  if (data.date        !== undefined) payload.date         = data.date;
+  if (data.time        !== undefined) payload.time         = data.time;
+  if (data.duration    !== undefined) payload.duration     = data.duration;
+  if (data.status      !== undefined) payload.status       = data.status;
+  if (data.isOnline    !== undefined) payload.is_online    = data.isOnline;
+  if (data.meetingLink !== undefined) payload.meeting_link = data.meetingLink;
+
+  const { error } = await supabase.from('appointments').update(payload).eq('id', aptId);
+  if (error) console.error('[Appointments] update error:', error.message);
+}
+
+export async function deleteAppointmentDb(aptId: string): Promise<void> {
+  const { error } = await supabase.from('appointments').delete().eq('id', aptId);
+  if (error) console.error('[Appointments] delete error:', error.message);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Batch helpers (for schedule generation)
+// ─────────────────────────────────────────────────────────────
+
+export async function batchInsertAppointments(
+  userId: string,
+  apts: Omit<Appointment, 'id'>[],
+): Promise<Appointment[]> {
+  if (apts.length === 0) return [];
+  const rows = apts.map(apt => ({
+    user_id:      userId,
+    client_id:    apt.clientId,
+    client_name:  apt.clientName,
+    date:         apt.date,
+    time:         apt.time,
+    duration:     apt.duration,
+    status:       apt.status,
+    is_online:    apt.isOnline,
+    meeting_link: apt.meetingLink ?? null,
+  }));
+  const { data, error } = await supabase.from('appointments').insert(rows).select();
+  if (error) { console.error('[Appointments] batch insert error:', error.message); return []; }
+  return (data ?? []).map(mapAppointment);
+}
+
+export async function batchInsertSessions(
+  userId: string,
+  sessions: Omit<Session, 'id'>[],
+): Promise<Session[]> {
+  if (sessions.length === 0) return [];
+  const rows = sessions.map(s => ({
+    user_id:   userId,
+    client_id: s.clientId,
+    date:      s.date,
+    time:      s.time,
+    duration:  s.duration,
+    status:    s.status,
+    notes:     s.notes,
+    topics:    s.topics,
+    is_paid:   s.isPaid,
+    amount:    s.amount,
+  }));
+  const { data, error } = await supabase.from('sessions').insert(rows).select();
+  if (error) { console.error('[Sessions] batch insert error:', error.message); return []; }
+  return (data ?? []).map(mapSession);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────
+
+async function _fetchOrCreateProfile(
+  userId: string,
+  email: string,
+  name: string,
+): Promise<User> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (!error && data) return mapProfile(data);
+
+  // Trigger didn't fire or row missing — create manually
+  const defaultPackages = [
+    { id: 'pkg1', name: 'Базовый',  sessions: 4,  price: 20000, discount: 10 },
+    { id: 'pkg2', name: 'Стандарт', sessions: 8,  price: 36000, discount: 15 },
+    { id: 'pkg3', name: 'Премиум',  sessions: 12, price: 48000, discount: 20 },
+  ];
+
+  const { data: created } = await supabase
+    .from('profiles')
+    .upsert({
+      id: userId, email, name,
+      therapy_type: '', hourly_rate: 5000, currency: '₽',
+      bio: '', phone: '',
+      working_hours: { start: '09:00', end: '18:00' },
+      working_days: [1, 2, 3, 4, 5],
+      packages: defaultPackages,
+      onboarding_complete: false,
+    })
+    .select()
+    .single();
+
+  if (created) return mapProfile(created);
+
+  // Last resort — return in-memory user
   return {
-    clients:      read<Client[]>('psywebnote_clients', []),
-    sessions:     read<Session[]>('psywebnote_sessions', []),
-    appointments: read<Appointment[]>('psywebnote_appointments', []),
-  };
-}
-
-export function saveUserData(userId: string, data: UserData): void {
-  write(KEYS.data(userId), data);
-}
-
-// ── Clear everything ────────────────────────────────────────
-
-export function clearAllAppData(): void {
-  Object.keys(localStorage)
-    .filter(k => k.startsWith('psywebnote_'))
-    .forEach(k => localStorage.removeItem(k));
-}
-
-// ── Legacy migration ────────────────────────────────────────
-
-function _tryMigrateProfile(stored: StoredUser): User {
-  // Try old 'psywebnote_user' key
-  const old = read<Partial<User> | null>('psywebnote_user', null);
-  if (old && old.id === stored.id) {
-    return {
-      id: stored.id,
-      email: stored.email,
-      name: stored.name,
-      therapyType: old.therapyType || '',
-      hourlyRate: old.hourlyRate || 5000,
-      currency: old.currency || '₽',
-      packages: old.packages || [],
-      bio: old.bio || '',
-      phone: old.phone || '',
-      avatar: old.avatar,
-      workingHours: old.workingHours || { start: '09:00', end: '18:00' },
-      workingDays: old.workingDays || [1, 2, 3, 4, 5],
-      onboardingComplete: true,
-    };
-  }
-  return {
-    id: stored.id,
-    email: stored.email,
-    name: stored.name,
-    therapyType: '',
-    hourlyRate: 5000,
-    currency: '₽',
-    packages: [
-      { id: '1', name: 'Базовый',   sessions: 4,  price: 20000, discount: 10 },
-      { id: '2', name: 'Стандарт',  sessions: 8,  price: 36000, discount: 15 },
-      { id: '3', name: 'Премиум',   sessions: 12, price: 48000, discount: 20 },
-    ],
+    id: userId, email, name,
+    therapyType: '', hourlyRate: 5000, currency: '₽',
     bio: '', phone: '',
     workingHours: { start: '09:00', end: '18:00' },
     workingDays: [1, 2, 3, 4, 5],
-    onboardingComplete: true,
+    packages: defaultPackages,
+    onboardingComplete: false,
   };
 }
 
-// ── Backward compat stubs ───────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Backward compat (unused stubs so old imports don't break)
+// ─────────────────────────────────────────────────────────────
 
-export const useBackend = false;
-export const storage = { clear: clearAllAppData };
+export const clearAllAppData = () => { /* handled by Supabase auth.signOut */ };
+export const useBackend = true;

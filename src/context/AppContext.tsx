@@ -1,12 +1,22 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import {
+  createContext, useContext, useState, useEffect,
+  useCallback, useRef, ReactNode,
+} from 'react';
 import { User, Client, Session, Appointment } from '../types';
 import { addDays, format, startOfWeek, addWeeks, getDay } from 'date-fns';
+import { supabase } from '../services/supabase';
 import {
-  authLogin, authRegister, authLogout, authGetCurrentUser, authUpdateProfile,
-  loadUserData, saveUserData, clearAllAppData, AuthResult,
+  AuthResult,
+  authRegister, authLogin, authLogout, authGetCurrentUser, authUpdateProfile,
+  fetchClients, insertClient, updateClientDb, deleteClientDb,
+  fetchSessions, insertSession, updateSessionDb, deleteSessionDb,
+  fetchAppointments, insertAppointment, updateAppointmentDb, deleteAppointmentDb,
+  batchInsertAppointments, batchInsertSessions,
 } from '../services/api';
 
-// ── Context types ───────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Context type
+// ─────────────────────────────────────────────────────────────
 
 interface AppContextType {
   user: User | null;
@@ -15,128 +25,217 @@ interface AppContextType {
   appointments: Appointment[];
   isAuthenticated: boolean;
   loading: boolean;
+  dataLoading: boolean;
   login:    (email: string, password: string) => Promise<AuthResult>;
   register: (email: string, password: string, name: string) => Promise<AuthResult>;
-  logout:   () => void;
+  logout:   () => Promise<void>;
   clearAllData: () => void;
-  updateUser: (data: Partial<User>) => void;
-  addClient:    (client: Omit<Client, 'id' | 'createdAt'>) => void;
-  updateClient: (id: string, data: Partial<Client>) => void;
-  deleteClient: (id: string) => void;
-  addSession:    (session: Omit<Session, 'id'>) => string;
-  updateSession: (id: string, data: Partial<Session>) => void;
-  deleteSession: (id: string) => void;
-  addAppointment:    (appointment: Omit<Appointment, 'id'>) => void;
-  updateAppointment: (id: string, data: Partial<Appointment>) => void;
-  deleteAppointment: (id: string) => void;
+  updateUser: (data: Partial<User>) => Promise<void>;
+  addClient:    (client: Omit<Client, 'id' | 'createdAt'>) => Promise<void>;
+  updateClient: (id: string, data: Partial<Client>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
+  addSession:    (session: Omit<Session, 'id'>) => Promise<string>;
+  updateSession: (id: string, data: Partial<Session>) => Promise<void>;
+  deleteSession: (id: string) => Promise<void>;
+  addAppointment:    (appointment: Omit<Appointment, 'id'>) => Promise<void>;
+  updateAppointment: (id: string, data: Partial<Appointment>) => Promise<void>;
+  deleteAppointment: (id: string) => Promise<void>;
   getClientById:         (id: string) => Client | undefined;
   getSessionsByClientId: (clientId: string) => Session[];
-  generateAppointmentsForClient: (client: Client, weeksAhead?: number) => void;
-  completeSession:              (sessionId: string, data: Partial<Session>) => void;
-  ensureSessionForAppointment:  (appointment: Appointment) => string;
+  generateAppointmentsForClient: (client: Client, weeksAhead?: number) => Promise<void>;
+  completeSession:              (sessionId: string, data: Partial<Session>) => Promise<void>;
+  ensureSessionForAppointment:  (appointment: Appointment) => Promise<string>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// ── Provider ────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Provider
+// ─────────────────────────────────────────────────────────────
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]               = useState<User | null>(() => authGetCurrentUser());
+  const [user, setUser]               = useState<User | null>(null);
   const [clients, setClients]         = useState<Client[]>([]);
   const [sessions, setSessions]       = useState<Session[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading]                     = useState(false);
+  const [loading, setLoading]         = useState(true);   // auth loading
+  const [dataLoading, setDataLoading] = useState(false);  // data loading
 
-  const sessionsRef = useRef<Session[]>([]);
+  // Refs for latest state in async callbacks
+  const sessionsRef     = useRef<Session[]>([]);
   const appointmentsRef = useRef<Appointment[]>([]);
+  const userRef         = useRef<User | null>(null);
 
-  // Keep refs in sync
-  useEffect(() => { sessionsRef.current = sessions; },     [sessions]);
+  useEffect(() => { sessionsRef.current = sessions; },         [sessions]);
   useEffect(() => { appointmentsRef.current = appointments; }, [appointments]);
+  useEffect(() => { userRef.current = user; },                 [user]);
 
-  // Load data when user changes
+  // ── Bootstrap: check existing session ──────────────────────
+
   useEffect(() => {
-    if (user) {
-      const d = loadUserData(user.id);
-      setClients(d.clients);
-      setSessions(d.sessions);
-      sessionsRef.current = d.sessions;
-      setAppointments(d.appointments);
-      appointmentsRef.current = d.appointments;
-    } else {
-      setClients([]);
-      setSessions([]);
-      sessionsRef.current = [];
-      setAppointments([]);
-      appointmentsRef.current = [];
+    let mounted = true;
+
+    const init = async () => {
+      try {
+        const profile = await authGetCurrentUser();
+        if (mounted && profile) {
+          setUser(profile);
+          await loadAllData(profile.id);
+        }
+      } catch (e) {
+        console.error('[Auth] init error:', e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    init();
+
+    // Listen for auth state changes (login / logout / token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Profile is set by login/register handlers; here we just ensure data
+          if (!userRef.current) {
+            const profile = await authGetCurrentUser();
+            if (profile && mounted) {
+              setUser(profile);
+              await loadAllData(profile.id);
+            }
+          }
+          setLoading(false);
+        }
+
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setClients([]);
+          setSessions([]);
+          setAppointments([]);
+          sessionsRef.current = [];
+          appointmentsRef.current = [];
+          setLoading(false);
+        }
+
+        if (event === 'TOKEN_REFRESHED') {
+          setLoading(false);
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load all user data ─────────────────────────────────────
+
+  const loadAllData = async (userId: string) => {
+    setDataLoading(true);
+    try {
+      const [cls, sess, apts] = await Promise.all([
+        fetchClients(userId),
+        fetchSessions(userId),
+        fetchAppointments(userId),
+      ]);
+      setClients(cls);
+      setSessions(sess);
+      sessionsRef.current = sess;
+      setAppointments(apts);
+      appointmentsRef.current = apts;
+    } catch (e) {
+      console.error('[Data] load error:', e);
+    } finally {
+      setDataLoading(false);
     }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
-  // Persist data whenever it changes
-  useEffect(() => {
-    if (user) saveUserData(user.id, { clients, sessions, appointments });
-  }, [clients, sessions, appointments]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Auth ─────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────────
 
   const login = async (email: string, password: string): Promise<AuthResult> => {
+    setLoading(true);
     const result = await authLogin(email, password);
-    if (result.success && result.user) setUser(result.user);
+    if (result.success && result.user) {
+      setUser(result.user);
+      await loadAllData(result.user.id);
+    }
+    setLoading(false);
     return result;
   };
 
   const register = async (email: string, password: string, name: string): Promise<AuthResult> => {
+    setLoading(true);
     const result = await authRegister(email, password, name);
-    if (result.success && result.user) setUser(result.user);
+    if (result.success && result.user) {
+      setUser(result.user);
+      // No data to load for new user
+    }
+    setLoading(false);
     return result;
   };
 
-  const logout = () => {
-    authLogout();
+  const logout = async () => {
+    await authLogout();
     setUser(null);
+    setClients([]);
+    setSessions([]);
+    setAppointments([]);
+    sessionsRef.current = [];
+    appointmentsRef.current = [];
   };
 
-  const clearAllData = () => {
-    clearAllAppData();
-    setUser(null);
-  };
+  const clearAllData = () => logout();
 
-  // ── Profile ───────────────────────────────────────────────
+  // ── Profile ────────────────────────────────────────────────
 
-  const updateUser = (data: Partial<User>) => {
-    if (!user) return;
-    const updated = { ...user, ...data };
+  const updateUser = async (data: Partial<User>) => {
+    if (!userRef.current) return;
+    const updated = { ...userRef.current, ...data };
     setUser(updated);
-    authUpdateProfile(user.id, data);
+    userRef.current = updated;
+    await authUpdateProfile(userRef.current.id, data);
   };
 
-  // ── Session helpers ───────────────────────────────────────
+  // ── Session helpers ────────────────────────────────────────
 
-  const ensureSessionForAppointment = useCallback((apt: Appointment): string => {
+  const ensureSessionForAppointment = useCallback(async (apt: Appointment): Promise<string> => {
     const existing = sessionsRef.current.find(
       s => s.clientId === apt.clientId && s.date === apt.date && s.time === apt.time,
     );
     if (existing) return existing.id;
 
-    const newId = crypto.randomUUID();
-    const newSession: Session = {
-      id: newId, clientId: apt.clientId,
+    const u = userRef.current;
+    if (!u) return '';
+
+    const newSess = await insertSession(u.id, {
+      clientId: apt.clientId,
       date: apt.date, time: apt.time, duration: apt.duration,
       status: 'scheduled', notes: '', topics: [], isPaid: false,
-      amount: user?.hourlyRate || 5000,
-    };
-    setSessions(prev => {
-      const next = [...prev, newSession];
-      sessionsRef.current = next;
-      return next;
+      amount: u.hourlyRate,
     });
-    return newId;
-  }, [user]);
+    if (newSess) {
+      setSessions(prev => {
+        const next = [...prev, newSess];
+        sessionsRef.current = next;
+        return next;
+      });
+      return newSess.id;
+    }
+    return '';
+  }, []);
 
-  const generateAppointmentsForClient = useCallback((client: Client, weeksAhead = 8) => {
+  const generateAppointmentsForClient = useCallback(async (
+    client: Client,
+    weeksAhead = 8,
+  ) => {
+    const u = userRef.current;
+    if (!u) return;
+
     const today = new Date();
-    const newApts: Appointment[]  = [];
-    const newSess: Session[]      = [];
+    const newAptRows: Omit<Appointment, 'id'>[]  = [];
+    const newSessRows: Omit<Session, 'id'>[]     = [];
 
     client.schedules.forEach(schedule => {
       for (let w = 0; w < weeksAhead; w++) {
@@ -151,11 +250,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         if (aptExists) continue;
 
-        const aptId  = crypto.randomUUID();
-        const sessId = crypto.randomUUID();
-
-        newApts.push({
-          id: aptId, clientId: client.id, clientName: client.name,
+        newAptRows.push({
+          clientId: client.id, clientName: client.name,
           date: dateStr, time: schedule.time, duration: schedule.duration,
           status: 'scheduled', isOnline: client.isOnline, meetingLink: client.meetingLink,
         });
@@ -164,74 +260,92 @@ export function AppProvider({ children }: { children: ReactNode }) {
           s => s.clientId === client.id && s.date === dateStr && s.time === schedule.time,
         );
         if (!sessExists) {
-          newSess.push({
-            id: sessId, clientId: client.id,
+          newSessRows.push({
+            clientId: client.id,
             date: dateStr, time: schedule.time, duration: schedule.duration,
             status: 'scheduled', notes: '', topics: [], isPaid: false,
-            amount: user?.hourlyRate || 5000,
+            amount: u.hourlyRate,
           });
         }
       }
     });
 
-    if (newApts.length > 0) {
+    const [insertedApts, insertedSess] = await Promise.all([
+      batchInsertAppointments(u.id, newAptRows),
+      batchInsertSessions(u.id, newSessRows),
+    ]);
+
+    if (insertedApts.length > 0) {
       setAppointments(prev => {
-        const next = [...prev, ...newApts];
+        const next = [...prev, ...insertedApts];
         appointmentsRef.current = next;
         return next;
       });
     }
-    if (newSess.length > 0) {
+    if (insertedSess.length > 0) {
       setSessions(prev => {
-        const next = [...prev, ...newSess];
+        const next = [...prev, ...insertedSess];
         sessionsRef.current = next;
         return next;
       });
     }
-  }, [user]);
+  }, []);
 
-  // ── Clients CRUD ──────────────────────────────────────────
+  // ── Clients CRUD ───────────────────────────────────────────
 
-  const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>) => {
-    const newClient: Client = {
-      ...clientData,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    setClients(prev => [...prev, newClient]);
-    if (newClient.schedules.length > 0) {
-      setTimeout(() => generateAppointmentsForClient(newClient), 100);
+  const addClient = async (clientData: Omit<Client, 'id' | 'createdAt'>) => {
+    const u = userRef.current;
+    if (!u) return;
+
+    const created = await insertClient(u.id, clientData);
+    if (!created) return;
+
+    setClients(prev => [...prev, created]);
+    if (created.schedules.length > 0) {
+      await generateAppointmentsForClient(created);
     }
   };
 
-  const updateClient = useCallback((id: string, data: Partial<Client>) => {
-    setClients(prev => {
-      const updated = prev.map(c => c.id === id ? { ...c, ...data } : c);
-      const updatedClient = updated.find(c => c.id === id);
+  const updateClient = useCallback(async (id: string, data: Partial<Client>) => {
+    // Optimistic update
+    setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
 
-      if (data.schedules && updatedClient) {
-        // Remove future appointments, regenerate
-        setAppointments(prevApt => {
-          const filtered = prevApt.filter(
-            a => a.clientId !== id || new Date(a.date) < new Date(),
-          );
-          appointmentsRef.current = filtered;
-          return filtered;
-        });
-        setTimeout(() => generateAppointmentsForClient(updatedClient), 100);
-      }
+    await updateClientDb(id, data);
 
-      if (data.name) {
-        setAppointments(prevApt =>
-          prevApt.map(a => a.clientId === id ? { ...a, clientName: data.name! } : a),
+    if (data.schedules) {
+      const u = userRef.current;
+      if (!u) return;
+
+      // Remove future appointments & regenerate
+      const futureApts = appointmentsRef.current.filter(
+        a => a.clientId === id && new Date(a.date) >= new Date(),
+      );
+      await Promise.all(futureApts.map(a => deleteAppointmentDb(a.id)));
+
+      const updatedClient = { ...clients.find(c => c.id === id)!, ...data };
+      setAppointments(prev => {
+        const filtered = prev.filter(
+          a => a.clientId !== id || new Date(a.date) < new Date(),
         );
-      }
+        appointmentsRef.current = filtered;
+        return filtered;
+      });
+      await generateAppointmentsForClient(updatedClient);
+    }
 
-      return updated;
-    });
-  }, [generateAppointmentsForClient]);
+    if (data.name) {
+      const aptUpdates = appointmentsRef.current
+        .filter(a => a.clientId === id)
+        .map(a => updateAppointmentDb(a.id, { clientName: data.name }));
+      await Promise.all(aptUpdates);
+      setAppointments(prev =>
+        prev.map(a => a.clientId === id ? { ...a, clientName: data.name! } : a),
+      );
+    }
+  }, [clients, generateAppointmentsForClient]);
 
-  const deleteClient = (id: string) => {
+  const deleteClient = async (id: string) => {
+    await deleteClientDb(id);
     setClients(prev => prev.filter(c => c.id !== id));
     setSessions(prev => {
       const next = prev.filter(s => s.clientId !== id);
@@ -245,60 +359,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ── Sessions CRUD ─────────────────────────────────────────
+  // ── Sessions CRUD ──────────────────────────────────────────
 
-  const addSession = (session: Omit<Session, 'id'>): string => {
-    const id = crypto.randomUUID();
-    const newSession: Session = { ...session, id };
+  const addSession = async (session: Omit<Session, 'id'>): Promise<string> => {
+    const u = userRef.current;
+    if (!u) return '';
+
+    const created = await insertSession(u.id, session);
+    if (!created) return '';
+
     setSessions(prev => {
-      const next = [...prev, newSession];
+      const next = [...prev, created];
       sessionsRef.current = next;
       return next;
     });
-    return id;
+    return created.id;
   };
 
-  const updateSession = (id: string, data: Partial<Session>) => {
+  const updateSession = async (id: string, data: Partial<Session>) => {
     const old = sessionsRef.current.find(s => s.id === id);
     const wasNotCompleted = old?.status !== 'completed';
     const isNowCompleted  = data.status === 'completed';
 
+    // Optimistic update
     setSessions(prev => {
       const next = prev.map(s => s.id === id ? { ...s, ...data } : s);
       sessionsRef.current = next;
       return next;
     });
 
+    await updateSessionDb(id, data);
+
     // Sync appointment status
     if (data.status && old) {
-      setAppointments(prev =>
-        prev.map(a =>
-          a.clientId === old.clientId && a.date === old.date && a.time === old.time
-            ? { ...a, status: data.status! }
-            : a,
-        ),
+      const aptToUpdate = appointmentsRef.current.find(
+        a => a.clientId === old.clientId && a.date === old.date && a.time === old.time,
       );
+      if (aptToUpdate) {
+        setAppointments(prev =>
+          prev.map(a => a.id === aptToUpdate.id ? { ...a, status: data.status! } : a),
+        );
+        await updateAppointmentDb(aptToUpdate.id, { status: data.status });
+      }
     }
 
     // Deduct from package
     if (wasNotCompleted && isNowCompleted && old) {
-      setClients(prev =>
-        prev.map(c => {
-          if (c.id !== old.clientId) return c;
-          if (c.packageId && c.remainingSessions > 0) {
-            return { ...c, remainingSessions: c.remainingSessions - 1 };
-          }
-          return c;
-        }),
-      );
+      const client = clients.find(c => c.id === old.clientId);
+      if (client?.packageId && client.remainingSessions > 0) {
+        const newRemaining = client.remainingSessions - 1;
+        setClients(prev =>
+          prev.map(c => c.id === old.clientId
+            ? { ...c, remainingSessions: newRemaining }
+            : c,
+          ),
+        );
+        await updateClientDb(old.clientId, { remainingSessions: newRemaining });
+      }
     }
   };
 
-  const completeSession = (sessionId: string, data: Partial<Session>) => {
-    updateSession(sessionId, data);
+  const completeSession = async (sessionId: string, data: Partial<Session>) => {
+    await updateSession(sessionId, data);
   };
 
-  const deleteSession = (id: string) => {
+  const deleteSession = async (id: string) => {
+    await deleteSessionDb(id);
     setSessions(prev => {
       const next = prev.filter(s => s.id !== id);
       sessionsRef.current = next;
@@ -306,43 +432,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ── Appointments CRUD ─────────────────────────────────────
+  // ── Appointments CRUD ──────────────────────────────────────
 
-  const addAppointment = (appointment: Omit<Appointment, 'id'>) => {
-    const newApt: Appointment = { ...appointment, id: crypto.randomUUID() };
+  const addAppointment = async (apt: Omit<Appointment, 'id'>) => {
+    const u = userRef.current;
+    if (!u) return;
+
+    const created = await insertAppointment(u.id, apt);
+    if (!created) return;
+
     setAppointments(prev => {
-      const next = [...prev, newApt];
+      const next = [...prev, created];
       appointmentsRef.current = next;
       return next;
     });
+
     // Ensure session exists
-    setTimeout(() => ensureSessionForAppointment(newApt), 50);
+    await ensureSessionForAppointment(created);
   };
 
-  const updateAppointment = (id: string, data: Partial<Appointment>) => {
+  const updateAppointment = async (id: string, data: Partial<Appointment>) => {
     setAppointments(prev => {
       const next = prev.map(a => a.id === id ? { ...a, ...data } : a);
       appointmentsRef.current = next;
       return next;
     });
+
+    await updateAppointmentDb(id, data);
+
     // Sync session status
     if (data.status) {
       const apt = appointmentsRef.current.find(a => a.id === id);
       if (apt) {
-        setSessions(prev => {
-          const next = prev.map(s =>
-            s.clientId === apt.clientId && s.date === apt.date && s.time === apt.time
-              ? { ...s, status: data.status! }
-              : s,
-          );
-          sessionsRef.current = next;
-          return next;
-        });
+        const sess = sessionsRef.current.find(
+          s => s.clientId === apt.clientId && s.date === apt.date && s.time === apt.time,
+        );
+        if (sess) {
+          setSessions(prev => {
+            const next = prev.map(s => s.id === sess.id ? { ...s, status: data.status! } : s);
+            sessionsRef.current = next;
+            return next;
+          });
+          await updateSessionDb(sess.id, { status: data.status });
+        }
       }
     }
   };
 
-  const deleteAppointment = (id: string) => {
+  const deleteAppointment = async (id: string) => {
+    await deleteAppointmentDb(id);
     setAppointments(prev => {
       const next = prev.filter(a => a.id !== id);
       appointmentsRef.current = next;
@@ -350,7 +488,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ── Getters ───────────────────────────────────────────────
+  // ── Getters ────────────────────────────────────────────────
 
   const getClientById = (id: string) => clients.find(c => c.id === id);
 
@@ -359,9 +497,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .filter(s => s.clientId === clientId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  // ── Render ─────────────────────────────────────────────────
+
   return (
     <AppContext.Provider value={{
-      user, clients, sessions, appointments, loading,
+      user, clients, sessions, appointments,
+      loading, dataLoading,
       isAuthenticated: !!user,
       login, register, logout, clearAllData, updateUser,
       addClient, updateClient, deleteClient,
