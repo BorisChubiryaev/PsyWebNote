@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Bell, X, Clock, CheckCircle, FileText, AlertCircle, ExternalLink, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getNotificationSettings } from '../utils/notificationSettings';
 
 interface ActiveNotification {
   id: string;
@@ -16,41 +17,29 @@ interface ActiveNotification {
   time: string;
 }
 
-// ── Persistent notified IDs in localStorage ──────────────────────────────────
-const NOTIFIED_KEY = 'psywebnote_notified_ids';
-const BROWSER_NOTIF_KEY = 'psywebnote_browser_notified';
+// ── Persistent tracking ───────────────────────────────────────────────────────
+const NOTIFIED_KEY       = 'psywebnote_notified_ids';
+const BROWSER_NOTIF_KEY  = 'psywebnote_browser_notified';
 
 function getNotifiedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(NOTIFIED_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch { return new Set(); }
+  try { const r = localStorage.getItem(NOTIFIED_KEY); return r ? new Set(JSON.parse(r)) : new Set(); }
+  catch { return new Set(); }
 }
 function saveNotifiedIds(ids: Set<string>) {
-  // Keep max 500 entries to avoid bloat
-  const arr = Array.from(ids).slice(-500);
-  localStorage.setItem(NOTIFIED_KEY, JSON.stringify(arr));
+  localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(ids).slice(-500)));
 }
-
 function getBrowserNotified(): Set<string> {
-  try {
-    const raw = localStorage.getItem(BROWSER_NOTIF_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch { return new Set(); }
+  try { const r = localStorage.getItem(BROWSER_NOTIF_KEY); return r ? new Set(JSON.parse(r)) : new Set(); }
+  catch { return new Set(); }
 }
 function saveBrowserNotified(ids: Set<string>) {
-  const arr = Array.from(ids).slice(-500);
-  localStorage.setItem(BROWSER_NOTIF_KEY, JSON.stringify(arr));
+  localStorage.setItem(BROWSER_NOTIF_KEY, JSON.stringify(Array.from(ids).slice(-500)));
 }
 
-// ── Quick Note Modal ─────────────────────────────────────────────────────────
+// ── Quick Note Modal ──────────────────────────────────────────────────────────
 interface QuickNoteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  clientId: string;
-  clientName: string;
-  aptDate: string;
-  aptTime: string;
+  isOpen: boolean; onClose: () => void;
+  clientId: string; clientName: string; aptDate: string; aptTime: string;
 }
 
 const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTime }: QuickNoteModalProps) => {
@@ -65,7 +54,7 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
     if (isOpen) { setStatus('completed'); setQuickNote(''); setClientMood(5); }
   }, [isOpen]);
 
-  const session = sessions.find(s => s.clientId === clientId && s.date === aptDate && s.time === aptTime);
+  const session     = sessions.find(s => s.clientId === clientId && s.date === aptDate && s.time === aptTime);
   const appointment = appointments.find(a => a.clientId === clientId && a.date === aptDate && a.time === aptTime);
 
   const handleSave = async () => {
@@ -85,7 +74,6 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
         isPaid: status === 'completed',
       });
     }
-
     if (appointment) await updateAppointment(appointment.id, { status });
 
     if (!wasCompleted && isNowCompleted) {
@@ -94,7 +82,6 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
         await updateClient(clientId, { remainingSessions: (client.remainingSessions ?? 1) - 1 });
       }
     }
-
     setSaving(false);
     onClose();
   };
@@ -110,32 +97,33 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[70] p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-5">
-          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
-
+          <div className="w-10 h-1 bg-gray-200 dark:bg-slate-600 rounded-full mx-auto mb-4 sm:hidden" />
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Сессия завершена</h2>
-              <p className="text-gray-500 text-xs mt-0.5">{clientName} · {aptDate} · {aptTime}</p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Сессия завершена</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{clientName} · {aptDate} · {aptTime}</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full">
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
           </div>
 
           <div className="space-y-4">
+            {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Статус сессии</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Статус сессии</label>
               <div className="grid grid-cols-3 gap-2">
                 {([
-                  { val: 'completed' as const, label: 'Проведена', icon: CheckCircle, active: 'border-green-500 bg-green-50 text-green-700' },
-                  { val: 'cancelled' as const, label: 'Отменена', icon: X, active: 'border-orange-500 bg-orange-50 text-orange-700' },
-                  { val: 'no-show' as const, label: 'Не пришёл', icon: AlertCircle, active: 'border-red-500 bg-red-50 text-red-700' },
+                  { val: 'completed' as const, label: 'Проведена',   icon: CheckCircle, active: 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' },
+                  { val: 'cancelled' as const, label: 'Отменена',    icon: X,           active: 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' },
+                  { val: 'no-show'   as const, label: 'Не пришёл',   icon: AlertCircle, active: 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' },
                 ]).map(s => (
                   <button key={s.val} onClick={() => setStatus(s.val)}
-                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 text-xs font-medium ${status === s.val ? s.active : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}>
+                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 text-xs font-medium ${
+                      status === s.val ? s.active : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 text-gray-600 dark:text-gray-400'
+                    }`}>
                     <s.icon className="w-5 h-5" />
                     {s.label}
                   </button>
@@ -145,8 +133,8 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
 
             {status === 'completed' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Состояние клиента: <span className="text-indigo-600 font-bold">{clientMood}</span>/10
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Состояние клиента: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{clientMood}</span>/10
                 </label>
                 <input type="range" min="1" max="10" value={clientMood}
                   onChange={e => setClientMood(Number(e.target.value))}
@@ -158,21 +146,19 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FileText className="w-4 h-4 inline mr-1" />
-                Быстрая заметка
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <FileText className="w-4 h-4 inline mr-1" />Быстрая заметка
               </label>
-              <textarea value={quickNote} onChange={e => setQuickNote(e.target.value)}
-                rows={3}
+              <textarea value={quickNote} onChange={e => setQuickNote(e.target.value)} rows={3}
                 placeholder="Основные темы, инсайты, важные моменты..."
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                className="w-full p-3 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
 
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
                 <button onClick={onClose}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 text-sm font-medium">
+                  className="flex-1 px-4 py-3 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 text-sm font-medium">
                   Позже
                 </button>
                 <button onClick={handleSave} disabled={saving}
@@ -181,7 +167,7 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
                 </button>
               </div>
               <button onClick={handleOpenFull}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 text-indigo-600 hover:bg-indigo-50 rounded-xl text-sm font-medium border border-indigo-200">
+                className="flex items-center justify-center gap-2 px-4 py-2.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-sm font-medium border border-indigo-200 dark:border-indigo-700">
                 <ExternalLink className="w-4 h-4" /> Открыть полную форму
               </button>
             </div>
@@ -192,7 +178,7 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
   );
 };
 
-// ── Main Notification System (SINGLETON — render only ONCE in App) ────────────
+// ── Main NotificationSystem (SINGLETON — render only ONCE in App.tsx) ─────────
 export const NotificationSystem = () => {
   const { appointments, clients } = useApp();
   const navigate = useNavigate();
@@ -202,7 +188,7 @@ export const NotificationSystem = () => {
     isOpen: boolean; clientId: string; clientName: string; aptDate: string; aptTime: string;
   }>({ isOpen: false, clientId: '', clientName: '', aptDate: '', aptTime: '' });
 
-  const bellRef = useRef<HTMLButtonElement>(null);
+  const bellRef    = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -210,16 +196,14 @@ export const NotificationSystem = () => {
     const handler = (e: MouseEvent) => {
       if (
         dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-        bellRef.current && !bellRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+        bellRef.current    && !bellRef.current.contains(e.target as Node)
+      ) setIsOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Request permission once
+  // Request browser permission once
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -227,11 +211,14 @@ export const NotificationSystem = () => {
   }, []);
 
   const checkAppointments = useCallback(() => {
-    const now = new Date();
-    const notifiedIds = getNotifiedIds();
+    const now      = new Date();
+    const settings = getNotificationSettings();
+    if (!settings.enabled) return;
+
+    const notifiedIds    = getNotifiedIds();
     const browserNotified = getBrowserNotified();
     const toAdd: ActiveNotification[] = [];
-    let idsChanged = false;
+    let idsChanged     = false;
     let browserChanged = false;
 
     appointments.forEach(apt => {
@@ -239,24 +226,23 @@ export const NotificationSystem = () => {
       const client = clients.find(c => c.id === apt.clientId);
       if (!client) return;
 
-      const aptStart = new Date(`${apt.date}T${apt.time}:00`);
-      const aptEnd = new Date(aptStart.getTime() + apt.duration * 60_000);
+      const aptStart  = new Date(`${apt.date}T${apt.time}:00`);
+      const aptEnd    = new Date(aptStart.getTime() + apt.duration * 60_000);
       const msSinceEnd = now.getTime() - aptEnd.getTime();
       const minSinceEnd = msSinceEnd / 60_000;
       const hoursSinceEnd = minSinceEnd / 60;
 
-      // Past sessions (0–48h window)
+      // ── Past sessions (0–48h window) ──
       if (minSinceEnd >= 0 && hoursSinceEnd <= 48) {
         const notifId = `${apt.id}-ended`;
         if (!notifiedIds.has(notifId)) {
-          notifiedIds.add(notifId);
-          idsChanged = true;
+          notifiedIds.add(notifId); idsChanged = true;
 
           let message: string;
-          if (hoursSinceEnd < 0.25) message = `Сессия с ${apt.clientName} только что завершилась — обновите статус!`;
-          else if (hoursSinceEnd < 1) message = `Сессия с ${apt.clientName} завершилась ${Math.round(minSinceEnd)} мин. назад.`;
-          else if (hoursSinceEnd < 3) message = `Сессия с ${apt.clientName} завершилась ${Math.floor(hoursSinceEnd)} ч. назад.`;
-          else message = `⚠️ Сессия с ${apt.clientName} (${apt.date} ${apt.time}) требует обновления статуса!`;
+          if (hoursSinceEnd < 0.25)     message = `Сессия с ${apt.clientName} только что завершилась — обновите статус!`;
+          else if (hoursSinceEnd < 1)   message = `Сессия с ${apt.clientName} завершилась ${Math.round(minSinceEnd)} мин. назад.`;
+          else if (hoursSinceEnd < 3)   message = `Сессия с ${apt.clientName} завершилась ${Math.floor(hoursSinceEnd)} ч. назад.`;
+          else                          message = `⚠️ Сессия с ${apt.clientName} (${apt.date} ${apt.time}) требует обновления статуса!`;
 
           toAdd.push({
             id: notifId, type: 'session_ended',
@@ -264,46 +250,47 @@ export const NotificationSystem = () => {
             message, timestamp: new Date().toISOString(), read: false, date: apt.date, time: apt.time,
           });
 
-          // Browser notification — only ONCE per appointment, ever
-          if ('Notification' in window && Notification.permission === 'granted' && !browserNotified.has(notifId)) {
-            browserNotified.add(notifId);
-            browserChanged = true;
-            new window.Notification('PsyWebNote', { body: message, icon: '/favicon.ico', tag: notifId });
+          if (settings.browserEnabled && 'Notification' in window && Notification.permission === 'granted' && !browserNotified.has(notifId)) {
+            browserNotified.add(notifId); browserChanged = true;
+            new window.Notification('PsyWebNote', { body: message, icon: '/icon-192.png', tag: notifId });
           }
         }
       }
 
-      // Upcoming (within 15 min)
-      const msUntilStart = aptStart.getTime() - now.getTime();
+      // ── Upcoming — use user-configured reminder time ──
+      const msUntilStart  = aptStart.getTime() - now.getTime();
       const minUntilStart = msUntilStart / 60_000;
-      if (minUntilStart > 0 && minUntilStart <= 15) {
-        const notifId = `${apt.id}-starting`;
-        if (!notifiedIds.has(notifId)) {
-          notifiedIds.add(notifId);
-          idsChanged = true;
+      const reminderMin   = settings.reminderMinutes;
 
-          const message = `Сессия с ${apt.clientName} начнётся через ${Math.round(minUntilStart)} мин.`;
+      if (minUntilStart > 0 && minUntilStart <= reminderMin) {
+        const notifId = `${apt.id}-starting-${reminderMin}`;
+        if (!notifiedIds.has(notifId)) {
+          notifiedIds.add(notifId); idsChanged = true;
+
+          const message = minUntilStart < 2
+            ? `Сессия с ${apt.clientName} начинается!`
+            : `Сессия с ${apt.clientName} начнётся через ${Math.round(minUntilStart)} мин.`;
+
           toAdd.push({
             id: notifId, type: 'session_starting',
             appointmentId: apt.id, clientId: apt.clientId, clientName: apt.clientName,
             message, timestamp: new Date().toISOString(), read: false, date: apt.date, time: apt.time,
           });
 
-          if ('Notification' in window && Notification.permission === 'granted' && !browserNotified.has(notifId)) {
-            browserNotified.add(notifId);
-            browserChanged = true;
-            new window.Notification('PsyWebNote', { body: message, icon: '/favicon.ico', tag: notifId });
+          if (settings.browserEnabled && 'Notification' in window && Notification.permission === 'granted' && !browserNotified.has(notifId)) {
+            browserNotified.add(notifId); browserChanged = true;
+            new window.Notification('PsyWebNote', { body: message, icon: '/icon-192.png', tag: notifId });
           }
         }
       }
     });
 
-    if (idsChanged) saveNotifiedIds(notifiedIds);
+    if (idsChanged)     saveNotifiedIds(notifiedIds);
     if (browserChanged) saveBrowserNotified(browserNotified);
     if (toAdd.length > 0) setNotifications(prev => [...toAdd, ...prev]);
   }, [appointments, clients]);
 
-  // Check on mount and when appointments change
+  // Check when appointments change (catches backdated additions instantly)
   useEffect(() => { checkAppointments(); }, [checkAppointments]);
 
   // Poll every 60s
@@ -324,16 +311,16 @@ export const NotificationSystem = () => {
     }
   };
 
-  const clearAll = () => { setNotifications([]); setIsOpen(false); };
+  const clearAll   = () => { setNotifications([]); setIsOpen(false); };
   const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
 
   return (
     <>
-      {/* Bell button */}
+      {/* Bell */}
       <button
         ref={bellRef}
         onClick={() => { setIsOpen(!isOpen); if (!isOpen) markAllRead(); }}
-        className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+        className="relative p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -343,11 +330,11 @@ export const NotificationSystem = () => {
         )}
       </button>
 
-      {/* Dropdown — fixed position, calculated from bell button */}
+      {/* Dropdown — fixed position */}
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="fixed z-[60] w-[calc(100vw-16px)] sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+          className="fixed z-[60] w-[calc(100vw-16px)] sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
           style={{
             top: (() => {
               if (bellRef.current) {
@@ -386,24 +373,24 @@ export const NotificationSystem = () => {
           </div>
 
           {/* List */}
-          <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-50">
+          <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-50 dark:divide-slate-700">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
+              <div className="p-8 text-center text-gray-400 dark:text-gray-500">
                 <Bell className="w-10 h-10 mx-auto mb-3 opacity-20" />
                 <p className="font-medium text-sm">Нет уведомлений</p>
                 <p className="text-xs mt-1">Все сессии в порядке</p>
               </div>
             ) : notifications.map(n => (
               <button key={n.id} onClick={() => handleClick(n)}
-                className={`w-full p-3 text-left hover:bg-gray-50 transition-colors flex items-start gap-3 ${!n.read ? 'bg-indigo-50/60' : ''}`}>
-                <div className={`p-1.5 rounded-full flex-shrink-0 ${n.type === 'session_ended' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex items-start gap-3 ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-900/10' : ''}`}>
+                <div className={`p-1.5 rounded-full flex-shrink-0 ${n.type === 'session_ended' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
                   {n.type === 'session_ended' ? <FileText className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 leading-snug">{n.message}</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-200 leading-snug">{n.message}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Calendar className="w-3 h-3 text-gray-400" />
-                    <span className="text-xs text-gray-500">{n.date} · {n.time}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-500">{n.date} · {n.time}</span>
                     {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
                   </div>
                 </div>
@@ -412,8 +399,8 @@ export const NotificationSystem = () => {
           </div>
 
           {notifications.length > 0 && (
-            <div className="p-2.5 border-t bg-gray-50 text-center">
-              <p className="text-xs text-gray-400">Нажмите для обновления статуса сессии</p>
+            <div className="p-2.5 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/30 text-center">
+              <p className="text-xs text-gray-400 dark:text-gray-500">Нажмите для обновления статуса сессии</p>
             </div>
           )}
         </div>

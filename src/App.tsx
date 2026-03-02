@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
 import LoadingScreen from './components/LoadingScreen';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -16,6 +17,7 @@ import Calendar from './pages/Calendar';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import Journal from './pages/Journal';
+import Settings from './pages/Settings';
 import VKCallback from './pages/VKCallback';
 import YandexCallback from './pages/YandexCallback';
 import AIFloatingChat from './components/AIFloatingChat';
@@ -68,7 +70,7 @@ function AppRoutes() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* ── OAuth callbacks — не требуют auth ── */}
+        {/* ── OAuth callbacks ── */}
         <Route path="/auth/vk/callback"     element={<VKCallback />} />
         <Route path="/auth/yandex/callback" element={<YandexCallback />} />
 
@@ -87,10 +89,11 @@ function AppRoutes() {
         <Route path="/clients/:clientId/sessions/:sessionId/edit" element={<ProtectedRoute><OnboardingGuard><SessionForm /></OnboardingGuard></ProtectedRoute>} />
         <Route path="/sessions/:sessionId/edit" element={<ProtectedRoute><OnboardingGuard><SessionForm /></OnboardingGuard></ProtectedRoute>} />
 
-        <Route path="/calendar" element={<ProtectedRoute><OnboardingGuard><Calendar /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/journal"  element={<ProtectedRoute><OnboardingGuard><Journal /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/reports"  element={<ProtectedRoute><OnboardingGuard><Reports /></OnboardingGuard></ProtectedRoute>} />
-        <Route path="/profile"  element={<ProtectedRoute><OnboardingGuard><Profile /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/calendar"  element={<ProtectedRoute><OnboardingGuard><Calendar /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/journal"   element={<ProtectedRoute><OnboardingGuard><Journal /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/reports"   element={<ProtectedRoute><OnboardingGuard><Reports /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/profile"   element={<ProtectedRoute><OnboardingGuard><Profile /></OnboardingGuard></ProtectedRoute>} />
+        <Route path="/settings"  element={<ProtectedRoute><OnboardingGuard><Settings /></OnboardingGuard></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -100,12 +103,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <BrowserRouter>
-        <AppProvider>
-          <AppRoutes />
-        </AppProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    <ThemeProvider>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <BrowserRouter>
+          <AppProvider>
+            <AppRoutes />
+          </AppProvider>
+        </BrowserRouter>
+      </GoogleOAuthProvider>
+    </ThemeProvider>
   );
 }

@@ -133,6 +133,7 @@ export default function Landing() {
             <a href="#benefits" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Преимущества</a>
             <a href="#testimonials" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Отзывы</a>
             <a href="#faq" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">FAQ</a>
+            <a href="#contacts" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Контакты</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -627,6 +628,80 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── Contacts ── */}
+      <section id="contacts" className="py-24 px-4 bg-gradient-to-br from-slate-900 to-indigo-950 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="max-w-3xl mx-auto text-center relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-full text-white/80 text-sm font-semibold mb-6">
+            <MessageSquare className="w-4 h-4" />
+            Связаться с разработчиком
+          </div>
+          <h2 className="text-4xl font-black text-white mb-4">
+            Есть вопросы или идеи?
+          </h2>
+          <p className="text-indigo-300 text-lg mb-10">
+            Пишите напрямую — отвечу на вопросы о приложении,<br className="hidden sm:block" />
+            приму предложения по улучшению
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Telegram */}
+            <a
+              href="https://t.me/oldnewborispro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col items-center gap-3 p-6 bg-white/10 hover:bg-[#2AABEE]/20 border border-white/10 hover:border-[#2AABEE]/40 rounded-2xl transition-all"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-[#2AABEE] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-white">Telegram</p>
+                <p className="text-indigo-300 text-sm">@oldnewborispro</p>
+              </div>
+            </a>
+
+            {/* Instagram */}
+            <a
+              href="https://instagram.com/oldnewborispro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col items-center gap-3 p-6 bg-white/10 hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/40 rounded-2xl transition-all"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-white">Instagram</p>
+                <p className="text-indigo-300 text-sm">@oldnewborispro</p>
+              </div>
+            </a>
+
+            {/* VK */}
+            <a
+              href="https://vk.com/oldnewborispro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col items-center gap-3 p-6 bg-white/10 hover:bg-[#0077FF]/20 border border-white/10 hover:border-[#0077FF]/40 rounded-2xl transition-all"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-[#0077FF] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.862-.523-2.049-1.713-1.033-1.01-1.49-.967-1.49-.967s-.312-.033-.312.338v1.564c0 .37-.12.583-1.096.583-1.637 0-3.466-.989-4.754-2.838C6.027 11.952 5.3 9.685 5.3 9.685s-.065-.315.338-.315h1.744c.446 0 .613.218.784.674 0 0 .816 2.595 2.076 3.958.24.253.42.402.537.402s.338-.217.338-.457v-2.1c-.033-1.19.097-1.742-.76-1.742h-.432c-.375 0-.567-.315-.567-.624 0-.427.307-.643.783-.643h2.791c.327 0 .598.109.598.598v3.083c0 .218.12.24.218.24.24 0 .477-.294.674-.49.752-.884 1.382-2.355 1.382-2.355.11-.271.327-.523.784-.523h1.744c.43 0 .675.22.555.654-.218.917-2.05 2.74-2.05 2.74-.262.327-.317.457 0 .752.24.24 1.064.97 1.613 1.567.903.997 1.548 1.721 1.722 2.278.185.523-.12.783-.554.783z"/>
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-white">ВКонтакте</p>
+                <p className="text-indigo-300 text-sm">@oldnewborispro</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── Footer ── */}
       <footer className="border-t border-gray-100 py-12 px-4">
         <div className="max-w-7xl mx-auto">
@@ -645,10 +720,27 @@ export default function Landing() {
               <button onClick={() => navigate('/register')} className="hover:text-indigo-600 transition-colors">Регистрация</button>
               <a href="#features" className="hover:text-indigo-600 transition-colors">Возможности</a>
               <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
+              <a href="#contacts" className="hover:text-indigo-600 transition-colors">Контакты</a>
             </div>
 
-            <div className="text-sm text-gray-400">
-              © 2025 PsyWebNote. Сделано с ♥ для психологов
+            <div className="flex items-center gap-4">
+              <a href="https://t.me/oldnewborispro" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#2AABEE] transition-colors">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+              </a>
+              <a href="https://instagram.com/oldnewborispro" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-500 transition-colors">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+              </a>
+              <a href="https://vk.com/oldnewborispro" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#0077FF] transition-colors">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.862-.523-2.049-1.713-1.033-1.01-1.49-.967-1.49-.967s-.312-.033-.312.338v1.564c0 .37-.12.583-1.096.583-1.637 0-3.466-.989-4.754-2.838C6.027 11.952 5.3 9.685 5.3 9.685s-.065-.315.338-.315h1.744c.446 0 .613.218.784.674 0 0 .816 2.595 2.076 3.958.24.253.42.402.537.402s.338-.217.338-.457v-2.1c-.033-1.19.097-1.742-.76-1.742h-.432c-.375 0-.567-.315-.567-.624 0-.427.307-.643.783-.643h2.791c.327 0 .598.109.598.598v3.083c0 .218.12.24.218.24.24 0 .477-.294.674-.49.752-.884 1.382-2.355 1.382-2.355.11-.271.327-.523.784-.523h1.744c.43 0 .675.22.555.654-.218.917-2.05 2.74-2.05 2.74-.262.327-.317.457 0 .752.24.24 1.064.97 1.613 1.567.903.997 1.548 1.721 1.722 2.278.185.523-.12.783-.554.783z"/>
+                </svg>
+              </a>
+              <span className="text-gray-300 mx-2">|</span>
+              <span className="text-sm text-gray-400">© 2025 PsyWebNote</span>
             </div>
           </div>
         </div>
