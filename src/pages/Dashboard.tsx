@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Users, Clock, DollarSign, TrendingUp, UserPlus,
-  Calendar as CalendarIcon, ChevronRight, Video, MapPin, Edit, Package
+  Calendar as CalendarIcon, ChevronRight, Video, MapPin, Edit, Package, Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, isToday, isTomorrow } from 'date-fns';
@@ -58,14 +58,28 @@ export default function Dashboard() {
     return format(d, 'd MMM', { locale: ru });
   };
 
-  const goToSession = (apt: typeof appointments[0]) => {
-    const sid = ensureSessionForAppointment(apt);
-    navigate(`/clients/${apt.clientId}/sessions/${sid}/edit`);
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
+
+  const goToSession = async (apt: typeof appointments[0]) => {
+    if (navigatingId) return;
+    setNavigatingId(apt.id);
+    try {
+      const sid = await ensureSessionForAppointment(apt);
+      navigate(`/clients/${apt.clientId}/sessions/${sid}/edit`);
+    } finally {
+      setNavigatingId(null);
+    }
   };
 
-  const goToSessionView = (apt: typeof appointments[0]) => {
-    const sid = ensureSessionForAppointment(apt);
-    navigate(`/clients/${apt.clientId}/sessions/${sid}`);
+  const goToSessionView = async (apt: typeof appointments[0]) => {
+    if (navigatingId) return;
+    setNavigatingId(apt.id);
+    try {
+      const sid = await ensureSessionForAppointment(apt);
+      navigate(`/clients/${apt.clientId}/sessions/${sid}`);
+    } finally {
+      setNavigatingId(null);
+    }
   };
 
   // Clients with low package sessions
@@ -145,12 +159,12 @@ export default function Dashboard() {
             {stats.todayAppointments.length > 0 ? (
               <div className="space-y-2">
                 {stats.todayAppointments.map(apt => (
-                  <div key={apt.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div key={apt.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                     <div className="text-center min-w-[44px] flex-shrink-0">
                       <p className="text-base font-bold text-indigo-600 leading-tight">{apt.time}</p>
                     </div>
-                    <button onClick={() => goToSessionView(apt)} className="flex-1 min-w-0 text-left">
-                      <p className="font-medium text-gray-900 text-sm truncate hover:text-indigo-600 transition-colors">
+                    <button onClick={() => goToSessionView(apt)} disabled={!!navigatingId} className="flex-1 min-w-0 text-left">
+                      <p className="font-medium text-gray-900 dark:text-white text-sm truncate hover:text-indigo-600 transition-colors">
                         {apt.clientName}
                       </p>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
@@ -160,9 +174,15 @@ export default function Dashboard() {
                       </div>
                     </button>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button onClick={() => goToSession(apt)}
-                        className="flex items-center gap-1 py-1.5 px-2.5 text-xs bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium">
-                        <Edit className="w-3 h-3" /> Записать
+                      <button
+                        onClick={() => goToSession(apt)}
+                        disabled={!!navigatingId}
+                        className="flex items-center gap-1 py-1.5 px-2.5 text-xs bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium disabled:opacity-60"
+                      >
+                        {navigatingId === apt.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Edit className="w-3 h-3" />}
+                        Записать
                       </button>
                       {apt.isOnline && apt.meetingLink && (
                         <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer"
@@ -193,20 +213,26 @@ export default function Dashboard() {
             {stats.upcomingAppointments.length > 0 ? (
               <div className="space-y-1">
                 {stats.upcomingAppointments.slice(0, 5).map(apt => (
-                  <button key={apt.id} onClick={() => goToSessionView(apt)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors text-left">
+                  <button
+                    key={apt.id}
+                    onClick={() => goToSessionView(apt)}
+                    disabled={!!navigatingId}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-colors text-left disabled:opacity-60"
+                  >
                     <div className="text-center min-w-[52px] flex-shrink-0">
                       <p className="text-xs text-gray-400">{formatDate(apt.date)}</p>
-                      <p className="font-bold text-gray-900 text-sm">{apt.time}</p>
+                      <p className="font-bold text-gray-900 dark:text-white text-sm">{apt.time}</p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{apt.clientName}</p>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{apt.clientName}</p>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         {apt.isOnline ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
                         <span>{apt.duration} мин</span>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    {navigatingId === apt.id
+                      ? <Loader2 className="w-4 h-4 text-indigo-500 animate-spin flex-shrink-0" />
+                      : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
                   </button>
                 ))}
               </div>

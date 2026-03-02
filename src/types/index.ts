@@ -58,6 +58,7 @@ export interface Schedule {
 export interface Session {
   id: string;
   clientId: string;
+  appointmentId?: string;  // link to corresponding Appointment
   date: string;
   time: string;
   duration: number;

@@ -37,7 +37,7 @@ interface AppContextType {
   addSession:    (session: Omit<Session, 'id'>) => Promise<string>;
   updateSession: (id: string, data: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
-  addAppointment:    (appointment: Omit<Appointment, 'id'>) => Promise<void>;
+  addAppointment:    (appointment: Omit<Appointment, 'id'>) => Promise<Appointment | null>;
   updateAppointment: (id: string, data: Partial<Appointment>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   getClientById:         (id: string) => Client | undefined;
@@ -201,18 +201,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Session helpers ────────────────────────────────────────
 
   const ensureSessionForAppointment = useCallback(async (apt: Appointment): Promise<string> => {
-    const existing = sessionsRef.current.find(
+    // First try to find by appointmentId
+    const byAptId = sessionsRef.current.find(s => s.appointmentId === apt.id);
+    if (byAptId) return byAptId.id;
+
+    // Fallback: match by clientId + date + time
+    const bySlot = sessionsRef.current.find(
       s => s.clientId === apt.clientId && s.date === apt.date && s.time === apt.time,
     );
-    if (existing) return existing.id;
+    if (bySlot) {
+      // Backfill appointmentId if missing
+      if (!bySlot.appointmentId) {
+        setSessions(prev => {
+          const next = prev.map(s => s.id === bySlot.id ? { ...s, appointmentId: apt.id } : s);
+          sessionsRef.current = next;
+          return next;
+        });
+        await updateSessionDb(bySlot.id, { appointmentId: apt.id } as Partial<Session>);
+      }
+      return bySlot.id;
+    }
 
     const u = userRef.current;
     if (!u) return '';
 
     const newSess = await insertSession(u.id, {
       clientId: apt.clientId,
+      appointmentId: apt.id,
       date: apt.date, time: apt.time, duration: apt.duration,
-      status: 'scheduled', notes: '', topics: [], isPaid: false,
+      status: apt.status ?? 'scheduled', notes: '', topics: [], isPaid: false,
       amount: u.hourlyRate,
     });
     if (newSess) {
@@ -434,12 +451,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Appointments CRUD ──────────────────────────────────────
 
-  const addAppointment = async (apt: Omit<Appointment, 'id'>) => {
+  const addAppointment = async (apt: Omit<Appointment, 'id'>): Promise<Appointment | null> => {
     const u = userRef.current;
-    if (!u) return;
+    if (!u) return null;
 
     const created = await insertAppointment(u.id, apt);
-    if (!created) return;
+    if (!created) return null;
 
     setAppointments(prev => {
       const next = [...prev, created];
@@ -447,8 +464,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    // Ensure session exists
+    // Ensure session exists and link appointmentId
     await ensureSessionForAppointment(created);
+    return created;
   };
 
   const updateAppointment = async (id: string, data: Partial<Appointment>) => {

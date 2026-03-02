@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, X, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -75,14 +75,15 @@ export default function SessionForm() {
         await updateAppointment(relatedApt.id, { status: formData.status });
       }
     } else {
-      // NEW session → create session + appointment
-      await addSession(sessionData);
-
+      // NEW session → find or create appointment first, then link
+      let aptId: string | undefined;
       const existingApt = appointments.find(a =>
         a.clientId === clientId && a.date === formData.date && a.time === formData.time
       );
-      if (!existingApt && client) {
-        await addAppointment({
+      if (existingApt) {
+        aptId = existingApt.id;
+      } else if (client) {
+        const newApt = await addAppointment({
           clientId,
           clientName: client.name,
           date: formData.date,
@@ -92,7 +93,9 @@ export default function SessionForm() {
           isOnline: client.isOnline,
           meetingLink: client.meetingLink,
         });
+        aptId = newApt?.id;
       }
+      await addSession({ ...sessionData, appointmentId: aptId });
     }
 
     // Deduct from package only when transitioning TO completed
@@ -110,15 +113,24 @@ export default function SessionForm() {
     }
   };
 
-  // Conflict check — exclude current session's own slot
+  // Find the appointment that belongs to this session (to exclude it from conflict check)
+  const ownAppointment = useMemo(() => {
+    if (!existingSession) return null;
+    // Match by appointmentId stored on session, or by date+time+clientId
+    return appointments.find(a =>
+      (existingSession.appointmentId && a.id === existingSession.appointmentId) ||
+      (a.clientId === existingSession.clientId &&
+       a.date === existingSession.date &&
+       a.time === existingSession.time)
+    ) || null;
+  }, [existingSession, appointments]);
+
+  // Conflict check — exclude the appointment that belongs to THIS session
   const hasConflict = (): boolean => {
     if (!formData.date || !formData.time) return false;
     return appointments.some(a => {
-      // Skip same appointment (editing same slot)
-      if (existingSession &&
-          a.clientId === existingSession.clientId &&
-          a.date === existingSession.date &&
-          a.time === existingSession.time) return false;
+      // Skip own appointment when editing
+      if (ownAppointment && a.id === ownAppointment.id) return false;
       if (a.date !== formData.date) return false;
       const [aH, aM] = a.time.split(':').map(Number);
       const [fH, fM] = formData.time.split(':').map(Number);
