@@ -740,7 +740,7 @@ export default function Landing() {
                 </svg>
               </a>
               <span className="text-gray-300 mx-2">|</span>
-              <span className="text-sm text-gray-400">© 2025 PsyWebNote</span>
+              <span className="text-sm text-gray-400">© 2026 PsyWebNote</span>
             </div>
           </div>
         </div>
