@@ -112,7 +112,7 @@ export default function Login() {
             </button>
 
             {/* VK */}
-            <VKLoginButton disabled={loading || gLoading} />
+            {/* <VKLoginButton disabled={loading || gLoading} /> */}
 
             {/* Yandex */}
             <YandexLoginButton disabled={loading || gLoading} />
