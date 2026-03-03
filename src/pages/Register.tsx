@@ -107,10 +107,10 @@ export default function Register() {
               {gLoading ? 'Входим...' : 'Продолжить с Google'}
             </button>
 
-            <VKLoginButton
+            {/* <VKLoginButton
               disabled={loading || gLoading}
               label="Продолжить с ВКонтакте"
-            />
+            /> */}
 
             <YandexLoginButton
               disabled={loading || gLoading}
