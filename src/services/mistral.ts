@@ -1,21 +1,56 @@
-const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
-const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
+/**
+ * Клиент для Mistral AI
+ * В production: запросы идут через /api/mistral (Vercel Function) — API ключ на сервере
+ * В dev: если задан VITE_MISTRAL_API_KEY — напрямую (для локальной разработки)
+ */
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
+// В production всегда используем прокси
+// В dev можно использовать прямой запрос если VITE_MISTRAL_API_KEY задан
+const IS_DEV = import.meta.env.DEV;
+const VITE_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
+
 export async function sendToMistral(messages: ChatMessage[]): Promise<string> {
-  if (!MISTRAL_API_KEY) {
-    throw new Error('Mistral API key not configured. Set VITE_MISTRAL_API_KEY in .env');
+  // Dev режим с прямым ключом — запрос напрямую (CORS разрешён для localhost)
+  if (IS_DEV && VITE_KEY) {
+    return sendDirect(messages, VITE_KEY);
   }
 
-  const response = await fetch(MISTRAL_API_URL, {
+  // Production и dev без ключа — через прокси
+  return sendViaProxy(messages);
+}
+
+async function sendViaProxy(messages: ChatMessage[]): Promise<string> {
+  const response = await fetch('/api/mistral', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      messages,
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(err.error || `Ошибка прокси: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || 'Нет ответа от AI';
+}
+
+async function sendDirect(messages: ChatMessage[], apiKey: string): Promise<string> {
+  const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: 'mistral-small-latest',
@@ -31,7 +66,7 @@ export async function sendToMistral(messages: ChatMessage[]): Promise<string> {
   }
 
   const data = await response.json();
-  return data.choices[0]?.message?.content || 'Нет ответа от AI';
+  return data.choices?.[0]?.message?.content || 'Нет ответа от AI';
 }
 
 // ── Dynamic system prompts with user context ────────────────
