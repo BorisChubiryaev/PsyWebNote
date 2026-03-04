@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/mistral",            "destination": "/api/mistral.js" },
     { "source": "/api/vk-token",           "destination": "/api/vk-token.js" },
     { "source": "/api/yandex-token",       "destination": "/api/yandex-token.js" },
     { "source": "/auth/vk/callback",       "destination": "/index.html" },
@@ -8,6 +9,14 @@
     { "source": "/(.*)",                   "destination": "/index.html" }
   ],
   "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
