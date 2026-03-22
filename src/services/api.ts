@@ -227,53 +227,83 @@ export async function fetchClients(userId: string): Promise<Client[]> {
 }
 
 export async function insertClient(userId: string, client: Omit<Client, 'id' | 'createdAt'>): Promise<Client | null> {
+  // Build base payload — always-present columns
+  const basePayload: Record<string, unknown> = {
+    user_id:            userId,
+    name:               client.name,
+    phone:              client.phone ?? null,
+    email:              client.email ?? null,
+    avatar:             client.avatar ?? null,
+    notes:              client.notes,
+    social_links:       client.socialLinks,
+    package_id:         client.packageId ?? null,
+    remaining_sessions: client.remainingSessions,
+    schedules:          client.schedules,
+    meeting_link:       client.meetingLink ?? null,
+    is_online:          client.isOnline,
+    status:             client.status,
+  };
+
+  // Try first with extended fields
+  const extPayload = {
+    ...basePayload,
+    individual_rate:     client.individualRate ?? null,
+    individual_currency: client.individualCurrency ?? null,
+    acquisition_channel: client.acquisitionChannel ?? null,
+  };
+
   const { data, error } = await supabase
     .from('clients')
-    .insert({
-      user_id:             userId,
-      name:                client.name,
-      phone:               client.phone ?? null,
-      email:               client.email ?? null,
-      avatar:              client.avatar ?? null,
-      notes:               client.notes,
-      social_links:        client.socialLinks,
-      package_id:          client.packageId ?? null,
-      remaining_sessions:  client.remainingSessions,
-      schedules:           client.schedules,
-      meeting_link:        client.meetingLink ?? null,
-      is_online:           client.isOnline,
-      status:              client.status,
-      individual_rate:     client.individualRate ?? null,
-      individual_currency: client.individualCurrency ?? null,
-      acquisition_channel: client.acquisitionChannel ?? null,
-    })
+    .insert(extPayload)
     .select()
     .single();
 
-  if (error) { console.error('[Clients] insert error:', error.message); return null; }
-  return mapClient(data);
+  if (!error) return mapClient(data);
+
+  // If extended columns don't exist yet — retry without them
+  console.warn('[Clients] insert with extended fields failed, retrying without:', error.message);
+  const { data: data2, error: error2 } = await supabase
+    .from('clients')
+    .insert(basePayload)
+    .select()
+    .single();
+
+  if (error2) { console.error('[Clients] insert error:', error2.message); return null; }
+  return mapClient(data2);
 }
 
 export async function updateClientDb(clientId: string, data: Partial<Client>): Promise<void> {
   const payload: Record<string, unknown> = {};
-  if (data.name                !== undefined) payload.name                = data.name;
-  if (data.phone               !== undefined) payload.phone               = data.phone;
-  if (data.email               !== undefined) payload.email               = data.email;
-  if (data.avatar              !== undefined) payload.avatar              = data.avatar;
-  if (data.notes               !== undefined) payload.notes               = data.notes;
-  if (data.socialLinks         !== undefined) payload.social_links        = data.socialLinks;
-  if (data.packageId           !== undefined) payload.package_id          = data.packageId;
-  if (data.remainingSessions   !== undefined) payload.remaining_sessions  = data.remainingSessions;
-  if (data.schedules           !== undefined) payload.schedules           = data.schedules;
-  if (data.meetingLink         !== undefined) payload.meeting_link        = data.meetingLink;
-  if (data.isOnline            !== undefined) payload.is_online           = data.isOnline;
-  if (data.status              !== undefined) payload.status              = data.status;
-  if (data.individualRate      !== undefined) payload.individual_rate     = data.individualRate;
-  if (data.individualCurrency  !== undefined) payload.individual_currency = data.individualCurrency;
-  if (data.acquisitionChannel  !== undefined) payload.acquisition_channel = data.acquisitionChannel;
+  if (data.name              !== undefined) payload.name               = data.name;
+  if (data.phone             !== undefined) payload.phone              = data.phone;
+  if (data.email             !== undefined) payload.email              = data.email;
+  if (data.avatar            !== undefined) payload.avatar             = data.avatar;
+  if (data.notes             !== undefined) payload.notes              = data.notes;
+  if (data.socialLinks       !== undefined) payload.social_links       = data.socialLinks;
+  if (data.packageId         !== undefined) payload.package_id         = data.packageId;
+  if (data.remainingSessions !== undefined) payload.remaining_sessions = data.remainingSessions;
+  if (data.schedules         !== undefined) payload.schedules          = data.schedules;
+  if (data.meetingLink       !== undefined) payload.meeting_link       = data.meetingLink;
+  if (data.isOnline          !== undefined) payload.is_online          = data.isOnline;
+  if (data.status            !== undefined) payload.status             = data.status;
 
-  const { error } = await supabase.from('clients').update(payload).eq('id', clientId);
-  if (error) console.error('[Clients] update error:', error.message);
+  // Extended fields — add only if defined
+  const extended: Record<string, unknown> = {};
+  if (data.individualRate     !== undefined) extended.individual_rate     = data.individualRate;
+  if (data.individualCurrency !== undefined) extended.individual_currency = data.individualCurrency;
+  if (data.acquisitionChannel !== undefined) extended.acquisition_channel = data.acquisitionChannel;
+
+  const { error } = await supabase.from('clients').update({ ...payload, ...extended }).eq('id', clientId);
+  if (error) {
+    // If extended columns don't exist, retry without them
+    if (Object.keys(extended).length > 0 && Object.keys(payload).length > 0) {
+      console.warn('[Clients] update with extended fields failed, retrying:', error.message);
+      const { error: error2 } = await supabase.from('clients').update(payload).eq('id', clientId);
+      if (error2) console.error('[Clients] update error:', error2.message);
+    } else {
+      console.error('[Clients] update error:', error.message);
+    }
+  }
 }
 
 export async function deleteClientDb(clientId: string): Promise<void> {
