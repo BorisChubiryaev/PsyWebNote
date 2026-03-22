@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LayoutProps { children: React.ReactNode; }
 
@@ -13,16 +14,17 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useApp();
   const { isDark, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
 
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Главная' },
-    { path: '/clients',   icon: Users,           label: 'Клиенты' },
-    { path: '/calendar',  icon: Calendar,         label: 'Календарь' },
-    { path: '/journal',   icon: BookOpen,         label: 'Журнал' },
-    { path: '/reports',   icon: BarChart3,        label: 'Отчёты' },
-    { path: '/profile',   icon: User,             label: 'Профиль' },
+    { path: '/dashboard', icon: LayoutDashboard, label: t('nav_dashboard') },
+    { path: '/clients',   icon: Users,           label: t('nav_clients') },
+    { path: '/calendar',  icon: Calendar,         label: t('nav_calendar') },
+    { path: '/journal',   icon: BookOpen,         label: t('nav_journal') },
+    { path: '/reports',   icon: BarChart3,        label: t('nav_reports') },
+    { path: '/profile',   icon: User,             label: t('nav_profile') },
   ];
 
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -75,13 +77,13 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex-1">
               <h1 className="font-bold text-gray-900 dark:text-white text-sm">PsyWebNote</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Для психологов</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('app_subtitle')}</p>
             </div>
             {/* Theme toggle desktop */}
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors"
-              title={isDark ? 'Светлая тема' : 'Тёмная тема'}
+              title={isDark ? t('theme_light') : t('theme_dark')}
             >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -100,7 +102,7 @@ export default function Layout({ children }: LayoutProps) {
             )}
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 dark:text-white truncate text-sm">{user?.name || 'Психолог'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.therapyType?.split(' ')[0] || 'Специализация'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.therapyType?.split(' ')[0] || t('app_subtitle')}</p>
             </div>
           </div>
         </div>
@@ -139,7 +141,7 @@ export default function Layout({ children }: LayoutProps) {
             `}
           >
             <Settings className="w-5 h-5 flex-shrink-0" />
-            Настройки
+            {t('nav_settings')}
           </Link>
         </nav>
 
@@ -150,7 +152,7 @@ export default function Layout({ children }: LayoutProps) {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-sm font-medium"
           >
             <LogOut className="w-5 h-5" />
-            Выйти
+            {t('nav_logout')}
           </button>
         </div>
       </aside>

@@ -5,13 +5,16 @@ import {
   Calendar as CalendarIcon, ChevronRight, Video, MapPin, Edit, Package, Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, isToday, isTomorrow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { ru, enUS } from 'date-fns/locale';
 import Layout from '../components/Layout';
 
 export default function Dashboard() {
   const { clients, sessions, appointments, user, ensureSessionForAppointment } = useApp();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const locale = language === 'ru' ? ru : enUS;
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -53,9 +56,9 @@ export default function Dashboard() {
 
   const formatDate = (dateStr: string) => {
     const d = parseISO(dateStr);
-    if (isToday(d)) return 'Сегодня';
-    if (isTomorrow(d)) return 'Завтра';
-    return format(d, 'd MMM', { locale: ru });
+    if (isToday(d)) return t('today');
+    if (isTomorrow(d)) return t('tomorrow');
+    return format(d, 'd MMM', { locale });
   };
 
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
@@ -82,10 +85,13 @@ export default function Dashboard() {
     }
   };
 
-  // Clients with low package sessions
   const lowPackageClients = clients.filter(c =>
     c.status === 'active' && c.packageId && (c.remainingSessions ?? 0) <= 2 && (c.remainingSessions ?? 0) > 0
   );
+
+  const greeting = language === 'ru'
+    ? `Добрый день, ${user?.name?.split(' ')[0] || 'Психолог'}! 👋`
+    : `Hello, ${user?.name?.split(' ')[0] || 'Psychologist'}! 👋`;
 
   return (
     <Layout>
@@ -94,18 +100,18 @@ export default function Dashboard() {
         {/* ── Greeting ── */}
         <div className="mb-5">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
-            Добрый день, {user?.name?.split(' ')[0] || 'Психолог'}! 👋
+            {greeting}
           </h1>
-          <p className="text-gray-500 text-sm">{format(new Date(), "EEEE, d MMMM yyyy", { locale: ru })}</p>
+          <p className="text-gray-500 text-sm">{format(new Date(), "EEEE, d MMMM yyyy", { locale })}</p>
         </div>
 
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           {[
-            { icon: Users,     bg: 'bg-indigo-100', color: 'text-indigo-600', value: stats.totalClients,                           label: 'Активных клиентов' },
-            { icon: DollarSign,bg: 'bg-green-100',  color: 'text-green-600',  value: `${stats.weeklyEarnings.toLocaleString()} ${user?.currency || '₽'}`, label: 'За неделю' },
-            { icon: Clock,     bg: 'bg-purple-100', color: 'text-purple-600', value: `${stats.weeklyHours}ч`,                      label: 'Отработано' },
-            { icon: TrendingUp,bg: 'bg-amber-100',  color: 'text-amber-600',  value: `${stats.weeklyScheduledHours}ч`,             label: 'Запланировано' },
+            { icon: Users,     bg: 'bg-indigo-100', color: 'text-indigo-600', value: stats.totalClients,                           label: t('active_clients') },
+            { icon: DollarSign,bg: 'bg-green-100',  color: 'text-green-600',  value: `${stats.weeklyEarnings.toLocaleString()} ${user?.currency || '₽'}`, label: t('weekly_earnings') },
+            { icon: Clock,     bg: 'bg-purple-100', color: 'text-purple-600', value: `${stats.weeklyHours}${t('hours')}`,          label: language === 'ru' ? 'Отработано' : 'Completed' },
+            { icon: TrendingUp,bg: 'bg-amber-100',  color: 'text-amber-600',  value: `${stats.weeklyScheduledHours}${t('hours')}`, label: language === 'ru' ? 'Запланировано' : 'Scheduled' },
           ].map((s, i) => (
             <div key={i} className="card p-4">
               <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-2`}>
@@ -120,10 +126,10 @@ export default function Dashboard() {
         {/* ── Quick Actions ── */}
         <div className="flex flex-wrap gap-2 mb-5">
           <Link to="/clients/new" className="btn-primary flex items-center gap-2 text-sm py-2.5">
-            <UserPlus className="w-4 h-4" /> Новый клиент
+            <UserPlus className="w-4 h-4" /> {t('new_client')}
           </Link>
           <Link to="/calendar" className="btn-secondary flex items-center gap-2 text-sm py-2.5">
-            <CalendarIcon className="w-4 h-4" /> Расписание
+            <CalendarIcon className="w-4 h-4" /> {t('nav_calendar')}
           </Link>
         </div>
 
@@ -133,12 +139,14 @@ export default function Dashboard() {
             <div className="flex items-start gap-3">
               <Package className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-amber-800 mb-1">Заканчивается пакет сессий</p>
+                <p className="text-sm font-semibold text-amber-800 mb-1">
+                  {language === 'ru' ? 'Заканчивается пакет сессий' : 'Session package running low'}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {lowPackageClients.map(c => (
                     <Link key={c.id} to={`/clients/${c.id}`}
                       className="text-xs px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors font-medium">
-                      {c.name} — осталось {c.remainingSessions}
+                      {c.name} — {language === 'ru' ? `осталось ${c.remainingSessions}` : `${c.remainingSessions} left`}
                     </Link>
                   ))}
                 </div>
@@ -151,9 +159,9 @@ export default function Dashboard() {
           {/* ── Today ── */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Сегодня</h2>
+              <h2 className="font-semibold text-gray-900">{t('today_schedule')}</h2>
               <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                {stats.todayAppointments.length} встреч
+                {stats.todayAppointments.length} {language === 'ru' ? 'встреч' : 'meetings'}
               </span>
             </div>
             {stats.todayAppointments.length > 0 ? (
@@ -169,8 +177,8 @@ export default function Dashboard() {
                       </p>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
                         {apt.isOnline ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                        <span>{apt.isOnline ? 'Онлайн' : 'Очно'}</span>
-                        <span>· {apt.duration} мин</span>
+                        <span>{apt.isOnline ? t('online') : t('offline')}</span>
+                        <span>· {apt.duration} {t('minutes')}</span>
                       </div>
                     </button>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -182,12 +190,12 @@ export default function Dashboard() {
                         {navigatingId === apt.id
                           ? <Loader2 className="w-3 h-3 animate-spin" />
                           : <Edit className="w-3 h-3" />}
-                        Записать
+                        {language === 'ru' ? 'Записать' : 'Record'}
                       </button>
                       {apt.isOnline && apt.meetingLink && (
                         <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer"
                           className="py-1.5 px-2.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium">
-                          Войти
+                          {language === 'ru' ? 'Войти' : 'Join'}
                         </a>
                       )}
                     </div>
@@ -197,7 +205,7 @@ export default function Dashboard() {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <CalendarIcon className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">На сегодня встреч нет</p>
+                <p className="text-sm">{t('no_sessions_today')}</p>
               </div>
             )}
           </div>
@@ -205,9 +213,9 @@ export default function Dashboard() {
           {/* ── Upcoming ── */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Ближайшие встречи</h2>
+              <h2 className="font-semibold text-gray-900">{t('upcoming')}</h2>
               <Link to="/calendar" className="text-indigo-600 text-xs hover:text-indigo-700 flex items-center gap-1">
-                Все <ChevronRight className="w-3.5 h-3.5" />
+                {language === 'ru' ? 'Все' : 'All'} <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {stats.upcomingAppointments.length > 0 ? (
@@ -227,7 +235,7 @@ export default function Dashboard() {
                       <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{apt.clientName}</p>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         {apt.isOnline ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                        <span>{apt.duration} мин</span>
+                        <span>{apt.duration} {t('minutes')}</span>
                       </div>
                     </div>
                     {navigatingId === apt.id
@@ -239,9 +247,9 @@ export default function Dashboard() {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <CalendarIcon className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">Нет запланированных встреч</p>
+                <p className="text-sm">{t('no_upcoming')}</p>
                 <Link to="/clients" className="text-indigo-600 text-xs mt-2 inline-block hover:underline">
-                  Добавить клиента
+                  {t('add_client')}
                 </Link>
               </div>
             )}
@@ -250,9 +258,9 @@ export default function Dashboard() {
           {/* ── Quick Client Access ── */}
           <div className="card lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Клиенты</h2>
+              <h2 className="font-semibold text-gray-900">{t('nav_clients')}</h2>
               <Link to="/clients" className="text-indigo-600 text-xs hover:text-indigo-700 flex items-center gap-1">
-                Все <ChevronRight className="w-3.5 h-3.5" />
+                {language === 'ru' ? 'Все' : 'All'} <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {clients.length > 0 ? (
@@ -269,7 +277,7 @@ export default function Dashboard() {
                     )}
                     <p className="text-xs font-medium text-gray-900 text-center truncate w-full">{client.name.split(' ')[0]}</p>
                     {client.packageId && (
-                      <p className="text-[10px] text-indigo-600 mt-0.5">{client.remainingSessions} сес.</p>
+                      <p className="text-[10px] text-indigo-600 mt-0.5">{client.remainingSessions} {language === 'ru' ? 'сес.' : 'ses.'}</p>
                     )}
                   </Link>
                 ))}
@@ -277,9 +285,9 @@ export default function Dashboard() {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Users className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">Нет клиентов</p>
+                <p className="text-sm">{t('no_clients_yet')}</p>
                 <Link to="/clients/new" className="btn-primary mt-4 inline-flex items-center gap-2 text-sm">
-                  <UserPlus className="w-4 h-4" /> Добавить первого клиента
+                  <UserPlus className="w-4 h-4" /> {t('add_client')}
                 </Link>
               </div>
             )}

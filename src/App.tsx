@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import LoadingScreen from './components/LoadingScreen';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -103,14 +104,16 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-        <BrowserRouter>
-          <AppProvider>
-            <AppRoutes />
-          </AppProvider>
-        </BrowserRouter>
-      </GoogleOAuthProvider>
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+          <BrowserRouter>
+            <AppProvider>
+              <AppRoutes />
+            </AppProvider>
+          </BrowserRouter>
+        </GoogleOAuthProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
