@@ -2,9 +2,20 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Client, Schedule, SocialLink } from '../types';
+import { Client, Schedule, SocialLink, AcquisitionChannel, ScheduleFrequency } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import Layout from '../components/Layout';
+
+const ACQUISITION_CHANNEL_LABELS: Record<AcquisitionChannel, string> = {
+  '': 'Не указан',
+  aggregator: 'Агрегатор',
+  word_of_mouth: 'Сарафанное радио',
+  colleague_referral: 'Рекомендация коллеги',
+  social_media: 'Соцсети',
+  other: 'Другое',
+};
+
+const CURRENCIES = ['₽', '$', '€', '₸', '₴'];
 
 export default function ClientForm() {
   const { id } = useParams();
@@ -23,6 +34,9 @@ export default function ClientForm() {
     isOnline: false,
     status: 'active' as Client['status'],
     avatar: '',
+    individualRate: '' as string | number,
+    individualCurrency: '',
+    acquisitionChannel: '' as AcquisitionChannel,
   });
 
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -43,6 +57,9 @@ export default function ClientForm() {
           isOnline: client.isOnline,
           status: client.status,
           avatar: client.avatar || '',
+          individualRate: client.individualRate !== undefined ? client.individualRate : '',
+          individualCurrency: client.individualCurrency || '',
+          acquisitionChannel: client.acquisitionChannel || '',
         });
         setSocialLinks(client.socialLinks);
         setSchedules(client.schedules);
@@ -52,9 +69,14 @@ export default function ClientForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const rateVal = formData.individualRate === '' ? undefined : Number(formData.individualRate);
+
     const clientData = {
       ...formData,
+      individualRate: rateVal,
+      individualCurrency: formData.individualCurrency || undefined,
+      acquisitionChannel: formData.acquisitionChannel || undefined,
       socialLinks,
       schedules,
     };
@@ -64,7 +86,7 @@ export default function ClientForm() {
     } else {
       addClient(clientData);
     }
-    
+
     navigate('/clients');
   };
 
@@ -81,15 +103,21 @@ export default function ClientForm() {
   };
 
   const addSchedule = () => {
-    setSchedules([...schedules, { id: uuidv4(), dayOfWeek: 1, time: '10:00', duration: 60 }]);
+    setSchedules([...schedules, {
+      id: uuidv4(),
+      dayOfWeek: 1,
+      time: '10:00',
+      duration: 50,
+      frequency: 'weekly',
+    }]);
   };
 
-  const removeSchedule = (id: string) => {
-    setSchedules(schedules.filter(s => s.id !== id));
+  const removeSchedule = (scheduleId: string) => {
+    setSchedules(schedules.filter(s => s.id !== scheduleId));
   };
 
-  const updateSchedule = (id: string, data: Partial<Schedule>) => {
-    setSchedules(schedules.map(s => s.id === id ? { ...s, ...data } : s));
+  const updateSchedule = (scheduleId: string, data: Partial<Schedule>) => {
+    setSchedules(schedules.map(s => s.id === scheduleId ? { ...s, ...data } : s));
   };
 
   const handlePackageChange = (packageId: string) => {
@@ -103,6 +131,12 @@ export default function ClientForm() {
 
   const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 
+  const frequencyLabels: Record<ScheduleFrequency, string> = {
+    weekly: 'Еженедельно',
+    biweekly: 'Раз в 2 недели',
+    once: 'Разово',
+  };
+
   return (
     <Layout>
       <div className="max-w-2xl mx-auto animate-fadeIn">
@@ -111,7 +145,7 @@ export default function ClientForm() {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {isEditing ? 'Редактировать клиента' : 'Новый клиент'}
           </h1>
         </div>
@@ -119,11 +153,11 @@ export default function ClientForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Основная информация</h2>
-            
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Основная информация</h2>
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Имя *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Имя *</label>
                 <input
                   type="text"
                   value={formData.name}
@@ -136,7 +170,7 @@ export default function ClientForm() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Телефон</label>
                   <input
                     type="tel"
                     value={formData.phone}
@@ -146,7 +180,7 @@ export default function ClientForm() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
                   <input
                     type="email"
                     value={formData.email}
@@ -157,16 +191,68 @@ export default function ClientForm() {
                 </div>
               </div>
 
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Статус</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Client['status'] })}
+                    className="input-field"
+                  >
+                    <option value="active">Активен</option>
+                    <option value="paused">На паузе</option>
+                    <option value="completed">Завершен</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Канал привлечения</label>
+                  <select
+                    value={formData.acquisitionChannel}
+                    onChange={(e) => setFormData({ ...formData, acquisitionChannel: e.target.value as AcquisitionChannel })}
+                    className="input-field"
+                  >
+                    {(Object.entries(ACQUISITION_CHANNEL_LABELS) as [AcquisitionChannel, string][]).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Individual Rate */}
+          <div className="card">
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-1">Стоимость сессии</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Если задана — используется вместо общей ставки ({user?.hourlyRate?.toLocaleString()} {user?.currency}).
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Индивидуальная стоимость
+                </label>
+                <input
+                  type="number"
+                  value={formData.individualRate}
+                  onChange={(e) => setFormData({ ...formData, individualRate: e.target.value })}
+                  className="input-field"
+                  placeholder={`По умолчанию: ${user?.hourlyRate ?? 0}`}
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Валюта клиента
+                </label>
                 <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Client['status'] })}
+                  value={formData.individualCurrency}
+                  onChange={(e) => setFormData({ ...formData, individualCurrency: e.target.value })}
                   className="input-field"
                 >
-                  <option value="active">Активен</option>
-                  <option value="paused">На паузе</option>
-                  <option value="completed">Завершен</option>
+                  <option value="">По умолчанию ({user?.currency ?? '₽'})</option>
+                  {CURRENCIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -175,7 +261,7 @@ export default function ClientForm() {
           {/* Social Links */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Социальные сети</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">Социальные сети</h2>
               <button type="button" onClick={addSocialLink} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
                 <Plus className="w-4 h-4" />
                 Добавить
@@ -220,8 +306,8 @@ export default function ClientForm() {
 
           {/* Session Format */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Формат сессий</h2>
-            
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Формат сессий</h2>
+
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -231,7 +317,7 @@ export default function ClientForm() {
                     onChange={() => setFormData({ ...formData, isOnline: false })}
                     className="w-4 h-4 text-indigo-600"
                   />
-                  <span>Очные встречи</span>
+                  <span className="dark:text-gray-200">Очные встречи</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -240,13 +326,13 @@ export default function ClientForm() {
                     onChange={() => setFormData({ ...formData, isOnline: true })}
                     className="w-4 h-4 text-indigo-600"
                   />
-                  <span>Онлайн</span>
+                  <span className="dark:text-gray-200">Онлайн</span>
                 </label>
               </div>
 
               {formData.isOnline && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ссылка на встречу</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ссылка на встречу</label>
                   <input
                     type="url"
                     value={formData.meetingLink}
@@ -261,11 +347,11 @@ export default function ClientForm() {
 
           {/* Package */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Пакет услуг</h2>
-            
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Пакет услуг</h2>
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Пакет</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Пакет</label>
                 <select
                   value={formData.packageId}
                   onChange={(e) => handlePackageChange(e.target.value)}
@@ -282,7 +368,7 @@ export default function ClientForm() {
 
               {formData.packageId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Осталось сессий</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Осталось сессий</label>
                   <input
                     type="number"
                     value={formData.remainingSessions}
@@ -298,21 +384,26 @@ export default function ClientForm() {
           {/* Schedule */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Расписание</h2>
+              <div>
+                <h2 className="font-semibold text-gray-900 dark:text-white">Расписание</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Регулярные слоты генерируются автоматически
+                </p>
+              </div>
               <button type="button" onClick={addSchedule} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
                 <Plus className="w-4 h-4" />
-                Добавить день
+                Добавить
               </button>
             </div>
 
             {schedules.length > 0 ? (
               <div className="space-y-3">
                 {schedules.map(schedule => (
-                  <div key={schedule.id} className="flex flex-wrap gap-3 items-center p-3 bg-gray-50 rounded-xl">
+                  <div key={schedule.id} className="flex flex-wrap gap-2 items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                     <select
                       value={schedule.dayOfWeek}
                       onChange={(e) => updateSchedule(schedule.id, { dayOfWeek: parseInt(e.target.value) })}
-                      className="input-field w-auto"
+                      className="input-field w-auto text-sm"
                     >
                       {dayNames.map((name, i) => (
                         <option key={i} value={i}>{name}</option>
@@ -322,18 +413,28 @@ export default function ClientForm() {
                       type="time"
                       value={schedule.time}
                       onChange={(e) => updateSchedule(schedule.id, { time: e.target.value })}
-                      className="input-field w-auto"
+                      className="input-field w-auto text-sm"
                     />
                     <select
                       value={schedule.duration}
                       onChange={(e) => updateSchedule(schedule.id, { duration: parseInt(e.target.value) })}
-                      className="input-field w-auto"
+                      className="input-field w-auto text-sm"
                     >
                       <option value={30}>30 мин</option>
                       <option value={45}>45 мин</option>
+                      <option value={50}>50 мин</option>
                       <option value={60}>60 мин</option>
                       <option value={90}>90 мин</option>
                       <option value={120}>120 мин</option>
+                    </select>
+                    <select
+                      value={schedule.frequency ?? 'weekly'}
+                      onChange={(e) => updateSchedule(schedule.id, { frequency: e.target.value as ScheduleFrequency })}
+                      className="input-field w-auto text-sm"
+                    >
+                      {(Object.entries(frequencyLabels) as [ScheduleFrequency, string][]).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
                     </select>
                     <button
                       type="button"
@@ -346,13 +447,13 @@ export default function ClientForm() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Расписание не задано</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">Расписание не задано</p>
             )}
           </div>
 
           {/* Notes */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Заметки</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Заметки</h2>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

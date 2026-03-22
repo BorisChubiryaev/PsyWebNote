@@ -49,20 +49,23 @@ function mapProfile(row: any): User {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapClient(row: any): Client {
   return {
-    id:                row.id,
-    name:              row.name,
-    phone:             row.phone ?? undefined,
-    email:             row.email ?? undefined,
-    avatar:            row.avatar ?? undefined,
-    notes:             row.notes ?? '',
-    socialLinks:       row.social_links ?? [],
-    packageId:         row.package_id ?? undefined,
-    remainingSessions: row.remaining_sessions ?? 0,
-    schedules:         row.schedules ?? [],
-    meetingLink:       row.meeting_link ?? undefined,
-    isOnline:          row.is_online ?? false,
-    status:            row.status ?? 'active',
-    createdAt:         row.created_at,
+    id:                  row.id,
+    name:                row.name,
+    phone:               row.phone ?? undefined,
+    email:               row.email ?? undefined,
+    avatar:              row.avatar ?? undefined,
+    notes:               row.notes ?? '',
+    socialLinks:         row.social_links ?? [],
+    packageId:           row.package_id ?? undefined,
+    remainingSessions:   row.remaining_sessions ?? 0,
+    schedules:           row.schedules ?? [],
+    meetingLink:         row.meeting_link ?? undefined,
+    isOnline:            row.is_online ?? false,
+    status:              row.status ?? 'active',
+    createdAt:           row.created_at,
+    individualRate:      row.individual_rate != null ? Number(row.individual_rate) : undefined,
+    individualCurrency:  row.individual_currency ?? undefined,
+    acquisitionChannel:  row.acquisition_channel ?? undefined,
   };
 }
 
@@ -227,19 +230,22 @@ export async function insertClient(userId: string, client: Omit<Client, 'id' | '
   const { data, error } = await supabase
     .from('clients')
     .insert({
-      user_id:            userId,
-      name:               client.name,
-      phone:              client.phone ?? null,
-      email:              client.email ?? null,
-      avatar:             client.avatar ?? null,
-      notes:              client.notes,
-      social_links:       client.socialLinks,
-      package_id:         client.packageId ?? null,
-      remaining_sessions: client.remainingSessions,
-      schedules:          client.schedules,
-      meeting_link:       client.meetingLink ?? null,
-      is_online:          client.isOnline,
-      status:             client.status,
+      user_id:             userId,
+      name:                client.name,
+      phone:               client.phone ?? null,
+      email:               client.email ?? null,
+      avatar:              client.avatar ?? null,
+      notes:               client.notes,
+      social_links:        client.socialLinks,
+      package_id:          client.packageId ?? null,
+      remaining_sessions:  client.remainingSessions,
+      schedules:           client.schedules,
+      meeting_link:        client.meetingLink ?? null,
+      is_online:           client.isOnline,
+      status:              client.status,
+      individual_rate:     client.individualRate ?? null,
+      individual_currency: client.individualCurrency ?? null,
+      acquisition_channel: client.acquisitionChannel ?? null,
     })
     .select()
     .single();
@@ -250,18 +256,21 @@ export async function insertClient(userId: string, client: Omit<Client, 'id' | '
 
 export async function updateClientDb(clientId: string, data: Partial<Client>): Promise<void> {
   const payload: Record<string, unknown> = {};
-  if (data.name               !== undefined) payload.name               = data.name;
-  if (data.phone              !== undefined) payload.phone              = data.phone;
-  if (data.email              !== undefined) payload.email              = data.email;
-  if (data.avatar             !== undefined) payload.avatar             = data.avatar;
-  if (data.notes              !== undefined) payload.notes              = data.notes;
-  if (data.socialLinks        !== undefined) payload.social_links       = data.socialLinks;
-  if (data.packageId          !== undefined) payload.package_id         = data.packageId;
-  if (data.remainingSessions  !== undefined) payload.remaining_sessions = data.remainingSessions;
-  if (data.schedules          !== undefined) payload.schedules          = data.schedules;
-  if (data.meetingLink        !== undefined) payload.meeting_link       = data.meetingLink;
-  if (data.isOnline           !== undefined) payload.is_online          = data.isOnline;
-  if (data.status             !== undefined) payload.status             = data.status;
+  if (data.name                !== undefined) payload.name                = data.name;
+  if (data.phone               !== undefined) payload.phone               = data.phone;
+  if (data.email               !== undefined) payload.email               = data.email;
+  if (data.avatar              !== undefined) payload.avatar              = data.avatar;
+  if (data.notes               !== undefined) payload.notes               = data.notes;
+  if (data.socialLinks         !== undefined) payload.social_links        = data.socialLinks;
+  if (data.packageId           !== undefined) payload.package_id          = data.packageId;
+  if (data.remainingSessions   !== undefined) payload.remaining_sessions  = data.remainingSessions;
+  if (data.schedules           !== undefined) payload.schedules           = data.schedules;
+  if (data.meetingLink         !== undefined) payload.meeting_link        = data.meetingLink;
+  if (data.isOnline            !== undefined) payload.is_online           = data.isOnline;
+  if (data.status              !== undefined) payload.status              = data.status;
+  if (data.individualRate      !== undefined) payload.individual_rate     = data.individualRate;
+  if (data.individualCurrency  !== undefined) payload.individual_currency = data.individualCurrency;
+  if (data.acquisitionChannel  !== undefined) payload.acquisition_channel = data.acquisitionChannel;
 
   const { error } = await supabase.from('clients').update(payload).eq('id', clientId);
   if (error) console.error('[Clients] update error:', error.message);

@@ -225,12 +225,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const u = userRef.current;
     if (!u) return '';
 
+    // Use individual rate if client has one
+    const clientForRate = clients.find(c => c.id === apt.clientId);
+    const effectiveRate = clientForRate?.individualRate ?? u.hourlyRate;
+
     const newSess = await insertSession(u.id, {
       clientId: apt.clientId,
       appointmentId: apt.id,
       date: apt.date, time: apt.time, duration: apt.duration,
       status: apt.status ?? 'scheduled', notes: '', topics: [], isPaid: false,
-      amount: u.hourlyRate,
+      amount: effectiveRate,
     });
     if (newSess) {
       setSessions(prev => {
@@ -250,12 +254,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const u = userRef.current;
     if (!u) return;
 
+    // Don't generate appointments for paused/completed clients
+    if (client.status !== 'active') return;
+
     const today = new Date();
     const newAptRows: Omit<Appointment, 'id'>[]  = [];
     const newSessRows: Omit<Session, 'id'>[]     = [];
 
+    // Effective rate: client individual rate or global
+    const effectiveRate = client.individualRate ?? u.hourlyRate;
+
     client.schedules.forEach(schedule => {
-      for (let w = 0; w < weeksAhead; w++) {
+      const freq = schedule.frequency ?? 'weekly';
+
+      // For "once" frequency, only generate one slot (the next upcoming occurrence)
+      if (freq === 'once') {
+        // Find the next occurrence of this dayOfWeek from today
+        const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+        let target = weekStart;
+        while (getDay(target) !== schedule.dayOfWeek) target = addDays(target, 1);
+        if (target < today) target = addDays(target, 7);
+        const dateStr = format(target, 'yyyy-MM-dd');
+
+        const aptExists = appointmentsRef.current.some(
+          a => a.clientId === client.id && a.date === dateStr && a.time === schedule.time,
+        );
+        if (!aptExists) {
+          newAptRows.push({
+            clientId: client.id, clientName: client.name,
+            date: dateStr, time: schedule.time, duration: schedule.duration,
+            status: 'scheduled', isOnline: client.isOnline, meetingLink: client.meetingLink,
+          });
+          const sessExists = sessionsRef.current.some(
+            s => s.clientId === client.id && s.date === dateStr && s.time === schedule.time,
+          );
+          if (!sessExists) {
+            newSessRows.push({
+              clientId: client.id,
+              date: dateStr, time: schedule.time, duration: schedule.duration,
+              status: 'scheduled', notes: '', topics: [], isPaid: false,
+              amount: effectiveRate,
+            });
+          }
+        }
+        return;
+      }
+
+      // Weekly or biweekly
+      const step = freq === 'biweekly' ? 2 : 1;
+      for (let w = 0; w < weeksAhead; w += step) {
         const weekStart = startOfWeek(addWeeks(today, w), { weekStartsOn: 1 });
         let target = weekStart;
         while (getDay(target) !== schedule.dayOfWeek) target = addDays(target, 1);
@@ -281,7 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             clientId: client.id,
             date: dateStr, time: schedule.time, duration: schedule.duration,
             status: 'scheduled', notes: '', topics: [], isPaid: false,
-            amount: u.hourlyRate,
+            amount: effectiveRate,
           });
         }
       }
@@ -329,25 +376,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await updateClientDb(id, data);
 
+    // If status changed to paused or completed — remove ALL future scheduled appointments
+    if (data.status && (data.status === 'paused' || data.status === 'completed')) {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const futureScheduledApts = appointmentsRef.current.filter(
+        a => a.clientId === id && a.date >= today && a.status === 'scheduled',
+      );
+      if (futureScheduledApts.length > 0) {
+        await Promise.all(futureScheduledApts.map(a => deleteAppointmentDb(a.id)));
+        // Also remove the corresponding scheduled sessions
+        const futureSessIds = sessionsRef.current
+          .filter(s => s.clientId === id && s.date >= today && s.status === 'scheduled')
+          .map(s => s.id);
+        await Promise.all(futureSessIds.map(sid => deleteSessionDb(sid)));
+
+        setAppointments(prev => {
+          const next = prev.filter(a => !futureScheduledApts.some(fa => fa.id === a.id));
+          appointmentsRef.current = next;
+          return next;
+        });
+        setSessions(prev => {
+          const next = prev.filter(s => !futureSessIds.includes(s.id));
+          sessionsRef.current = next;
+          return next;
+        });
+      }
+    }
+
     if (data.schedules) {
       const u = userRef.current;
       if (!u) return;
 
-      // Remove future appointments & regenerate
+      const currentClient = { ...clients.find(c => c.id === id)!, ...data };
+
+      // Remove future scheduled appointments & regenerate (only if client is active)
       const futureApts = appointmentsRef.current.filter(
-        a => a.clientId === id && new Date(a.date) >= new Date(),
+        a => a.clientId === id && new Date(a.date) >= new Date() && a.status === 'scheduled',
       );
       await Promise.all(futureApts.map(a => deleteAppointmentDb(a.id)));
 
-      const updatedClient = { ...clients.find(c => c.id === id)!, ...data };
       setAppointments(prev => {
         const filtered = prev.filter(
-          a => a.clientId !== id || new Date(a.date) < new Date(),
+          a => !(a.clientId === id && new Date(a.date) >= new Date() && a.status === 'scheduled'),
         );
         appointmentsRef.current = filtered;
         return filtered;
       });
-      await generateAppointmentsForClient(updatedClient);
+
+      // Only regenerate if client is active
+      if (currentClient.status === 'active') {
+        await generateAppointmentsForClient(currentClient);
+      }
     }
 
     if (data.name) {

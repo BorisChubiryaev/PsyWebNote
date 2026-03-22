@@ -26,6 +26,14 @@ export interface Package {
   discount: number;
 }
 
+export type AcquisitionChannel =
+  | 'aggregator'
+  | 'word_of_mouth'
+  | 'colleague_referral'
+  | 'social_media'
+  | 'other'
+  | '';
+
 export interface Client {
   id: string;
   name: string;
@@ -41,6 +49,12 @@ export interface Client {
   isOnline: boolean;
   createdAt: string;
   status: 'active' | 'paused' | 'completed';
+  /** Individual rate for this client (overrides global hourlyRate if set) */
+  individualRate?: number;
+  /** Currency for this client (overrides global currency if set) */
+  individualCurrency?: string;
+  /** Where this client came from */
+  acquisitionChannel?: AcquisitionChannel;
 }
 
 export interface SocialLink {
@@ -48,11 +62,15 @@ export interface SocialLink {
   url: string;
 }
 
+export type ScheduleFrequency = 'weekly' | 'biweekly' | 'once';
+
 export interface Schedule {
   id: string;
   dayOfWeek: number;
   time: string;
   duration: number;
+  /** How often this schedule repeats */
+  frequency?: ScheduleFrequency;
 }
 
 export interface Session {

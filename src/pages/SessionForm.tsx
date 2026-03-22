@@ -21,24 +21,27 @@ export default function SessionForm() {
   // Track if form was initialized from existing session
   const initializedRef = useRef(false);
 
+  // Use client's individual rate if set, otherwise global rate
+  const defaultAmount = client?.individualRate ?? user?.hourlyRate ?? 3000;
+
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     time: '10:00',
-    duration: 60,
+    duration: 50,
     status: 'completed' as 'scheduled' | 'completed' | 'cancelled' | 'no-show',
     notes: '',
     mood: 5,
     homework: '',
     nextSessionGoals: '',
     isPaid: true,
-    amount: user?.hourlyRate || 3000,
+    amount: defaultAmount,
   });
   const [topics, setTopics] = useState<string[]>([]);
   const [newTopic, setNewTopic] = useState('');
 
   // Initialize form ONCE from existing session — never re-run when user changes
   useEffect(() => {
-    if (isEditing && existingSession && !initializedRef.current) {
+      if (isEditing && existingSession && !initializedRef.current) {
       initializedRef.current = true;
       setFormData({
         date: existingSession.date,
@@ -50,7 +53,7 @@ export default function SessionForm() {
         homework: existingSession.homework || '',
         nextSessionGoals: existingSession.nextSessionGoals || '',
         isPaid: existingSession.isPaid,
-        amount: existingSession.amount || user?.hourlyRate || 3000,
+        amount: existingSession.amount || client?.individualRate || user?.hourlyRate || 3000,
       });
       setTopics(existingSession.topics || []);
     }
@@ -226,6 +229,7 @@ export default function SessionForm() {
                 >
                   <option value={30}>30 мин</option>
                   <option value={45}>45 мин</option>
+                  <option value={50}>50 мин</option>
                   <option value={60}>60 мин</option>
                   <option value={90}>90 мин</option>
                   <option value={120}>120 мин</option>
