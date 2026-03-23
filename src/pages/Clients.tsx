@@ -1,18 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Search, 
-  UserPlus, 
-  Video,
-  MapPin,
-  Package,
-  ChevronRight
-} from 'lucide-react';
+import { Search, UserPlus, Video, MapPin, Package, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import Layout from '../components/Layout';
 
 export default function Clients() {
   const { clients } = useApp();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'completed'>('all');
 
@@ -29,10 +24,12 @@ export default function Clients() {
   };
 
   const statusLabels = {
-    active: 'Активен',
-    paused: 'Пауза',
-    completed: 'Завершен',
+    active: t('status_active'),
+    paused: t('status_paused'),
+    completed: t('status_completed_client'),
   };
+
+  const dayShorts = [t('day_sun'), t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat')];
 
   return (
     <Layout>
@@ -40,12 +37,12 @@ export default function Clients() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Клиенты</h1>
-            <p className="text-gray-500">{clients.length} клиентов</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{t('clients_title')}</h1>
+            <p className="text-gray-500">{clients.length} {t('clients')}</p>
           </div>
           <Link to="/clients/new" className="btn-primary flex items-center gap-2 justify-center">
             <UserPlus className="w-5 h-5" />
-            Новый клиент
+            {t('new_client')}
           </Link>
         </div>
 
@@ -57,7 +54,7 @@ export default function Clients() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по имени..."
+              placeholder={t('search_by_name')}
               className="input-field pl-12"
             />
           </div>
@@ -67,10 +64,10 @@ export default function Clients() {
               onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
               className="input-field w-auto"
             >
-              <option value="all">Все статусы</option>
-              <option value="active">Активные</option>
-              <option value="paused">На паузе</option>
-              <option value="completed">Завершенные</option>
+              <option value="all">{t('status_all')}</option>
+              <option value="active">{t('status_active')}</option>
+              <option value="paused">{t('status_paused')}</option>
+              <option value="completed">{t('status_completed_client')}</option>
             </select>
           </div>
         </div>
@@ -79,7 +76,7 @@ export default function Clients() {
         {filteredClients.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredClients.map(client => (
-              <Link 
+              <Link
                 key={client.id}
                 to={`/clients/${client.id}`}
                 className="card hover:shadow-md transition-shadow group"
@@ -95,7 +92,7 @@ export default function Clients() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                        <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 transition-colors">
                           {client.name}
                         </h3>
                         <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[client.status]}`}>
@@ -107,24 +104,24 @@ export default function Clients() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-4 text-sm text-gray-500">
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     {client.isOnline ? (
                       <>
                         <Video className="w-4 h-4" />
-                        <span>Онлайн</span>
+                        <span>{t('online')}</span>
                       </>
                     ) : (
                       <>
                         <MapPin className="w-4 h-4" />
-                        <span>Очно</span>
+                        <span>{t('offline')}</span>
                       </>
                     )}
                   </div>
                   {client.packageId && (
                     <div className="flex items-center gap-1">
                       <Package className="w-4 h-4" />
-                      <span>{client.remainingSessions} сессий</span>
+                      <span>{client.remainingSessions} {t('sessions')}</span>
                     </div>
                   )}
                 </div>
@@ -133,7 +130,7 @@ export default function Clients() {
                   <div className="mt-3 text-sm text-gray-500">
                     {client.schedules.map((s, i) => (
                       <span key={s.id}>
-                        {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][s.dayOfWeek]} {s.time}
+                        {dayShorts[s.dayOfWeek]} {s.time}
                         {i < client.schedules.length - 1 && ', '}
                       </span>
                     ))}
@@ -144,19 +141,16 @@ export default function Clients() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
               <Search className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {search ? 'Клиенты не найдены' : 'У вас пока нет клиентов'}
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {search ? t('no_clients_found') : t('no_clients_yet')}
             </h3>
-            <p className="text-gray-500 mb-6">
-              {search ? 'Попробуйте изменить параметры поиска' : 'Добавьте первого клиента, чтобы начать работу'}
-            </p>
             {!search && (
-              <Link to="/clients/new" className="btn-primary inline-flex items-center gap-2">
+              <Link to="/clients/new" className="btn-primary inline-flex items-center gap-2 mt-4">
                 <UserPlus className="w-5 h-5" />
-                Добавить клиента
+                {t('add_client')}
               </Link>
             )}
           </div>

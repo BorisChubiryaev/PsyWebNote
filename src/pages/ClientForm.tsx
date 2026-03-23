@@ -2,18 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Client, Schedule, SocialLink, AcquisitionChannel, ScheduleFrequency } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import Layout from '../components/Layout';
-
-const ACQUISITION_CHANNEL_LABELS: Record<AcquisitionChannel, string> = {
-  '': 'Не указан',
-  aggregator: 'Агрегатор',
-  word_of_mouth: 'Сарафанное радио',
-  colleague_referral: 'Рекомендация коллеги',
-  social_media: 'Соцсети',
-  other: 'Другое',
-};
 
 const CURRENCIES = ['₽', '$', '€', '₸', '₴'];
 
@@ -21,6 +13,7 @@ export default function ClientForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addClient, updateClient, getClientById, user } = useApp();
+  const { t } = useLanguage();
   const isEditing = !!id;
 
   const [formData, setFormData] = useState({
@@ -129,12 +122,33 @@ export default function ClientForm() {
     });
   };
 
-  const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+  const dayNames = [
+    t('day_sunday'), t('day_monday'), t('day_tuesday'), t('day_wednesday'),
+    t('day_thursday'), t('day_friday'), t('day_saturday'),
+  ];
 
   const frequencyLabels: Record<ScheduleFrequency, string> = {
-    weekly: 'Еженедельно',
-    biweekly: 'Раз в 2 недели',
-    once: 'Разово',
+    weekly: t('frequency_weekly'),
+    biweekly: t('frequency_biweekly'),
+    once: t('frequency_once'),
+  };
+
+  const acquisitionChannelLabels: Record<string, string> = {
+    '': t('not_specified'),
+    aggregator: t('channel_aggregator'),
+    word_of_mouth: t('channel_word_of_mouth'),
+    colleague_referral: t('channel_colleague_referral'),
+    social_media: t('channel_social_media'),
+    other: t('channel_other'),
+  };
+
+  const durationLabels: Record<number, string> = {
+    30: `30 ${t('minutes')}`,
+    45: `45 ${t('minutes')}`,
+    50: `50 ${t('minutes')}`,
+    60: `60 ${t('minutes')}`,
+    90: `90 ${t('minutes')}`,
+    120: `120 ${t('minutes')}`,
   };
 
   return (
@@ -142,35 +156,34 @@ export default function ClientForm() {
       <div className="max-w-2xl mx-auto animate-fadeIn">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isEditing ? 'Редактировать клиента' : 'Новый клиент'}
+            {isEditing ? t('edit_client_title') : t('new_client_title')}
           </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Основная информация</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('contact_info')}</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Имя *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('client_name')} *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="input-field"
-                  placeholder="Иван Петров"
                   required
                 />
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Телефон</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('phone')}</label>
                   <input
                     type="tel"
                     value={formData.phone}
@@ -180,7 +193,7 @@ export default function ClientForm() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('email_address')}</label>
                   <input
                     type="email"
                     value={formData.email}
@@ -193,25 +206,25 @@ export default function ClientForm() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Статус</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('status')}</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Client['status'] })}
                     className="input-field"
                   >
-                    <option value="active">Активен</option>
-                    <option value="paused">На паузе</option>
-                    <option value="completed">Завершен</option>
+                    <option value="active">{t('status_active')}</option>
+                    <option value="paused">{t('status_paused')}</option>
+                    <option value="completed">{t('status_completed_client')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Канал привлечения</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('acquisition_channel')}</label>
                   <select
                     value={formData.acquisitionChannel}
                     onChange={(e) => setFormData({ ...formData, acquisitionChannel: e.target.value as AcquisitionChannel })}
                     className="input-field"
                   >
-                    {(Object.entries(ACQUISITION_CHANNEL_LABELS) as [AcquisitionChannel, string][]).map(([val, label]) => (
+                    {Object.entries(acquisitionChannelLabels).map(([val, label]) => (
                       <option key={val} value={val}>{label}</option>
                     ))}
                   </select>
@@ -222,34 +235,28 @@ export default function ClientForm() {
 
           {/* Individual Rate */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-1">Стоимость сессии</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Если задана — используется вместо общей ставки ({user?.hourlyRate?.toLocaleString()} {user?.currency}).
-            </p>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-1">{t('individual_rate')}</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('individual_rate_hint')} ({user?.hourlyRate?.toLocaleString()} {user?.currency})</p>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Индивидуальная стоимость
-                </label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('individual_rate')}</label>
                 <input
                   type="number"
                   value={formData.individualRate}
                   onChange={(e) => setFormData({ ...formData, individualRate: e.target.value })}
                   className="input-field"
-                  placeholder={`По умолчанию: ${user?.hourlyRate ?? 0}`}
+                  placeholder={`${t('not_specified')} (${user?.hourlyRate ?? 0})`}
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Валюта клиента
-                </label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('currency')}</label>
                 <select
                   value={formData.individualCurrency}
                   onChange={(e) => setFormData({ ...formData, individualCurrency: e.target.value })}
                   className="input-field"
                 >
-                  <option value="">По умолчанию ({user?.currency ?? '₽'})</option>
+                  <option value="">{t('not_specified')} ({user?.currency ?? '₽'})</option>
                   {CURRENCIES.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -261,10 +268,10 @@ export default function ClientForm() {
           {/* Social Links */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900 dark:text-white">Социальные сети</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">{t('social_links')}</h2>
               <button type="button" onClick={addSocialLink} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
                 <Plus className="w-4 h-4" />
-                Добавить
+                {t('add')}
               </button>
             </div>
 
@@ -280,7 +287,7 @@ export default function ClientForm() {
                       <option value="telegram">Telegram</option>
                       <option value="instagram">Instagram</option>
                       <option value="whatsapp">WhatsApp</option>
-                      <option value="other">Другое</option>
+                      <option value="other">{t('channel_other')}</option>
                     </select>
                     <input
                       type="url"
@@ -292,7 +299,7 @@ export default function ClientForm() {
                     <button
                       type="button"
                       onClick={() => removeSocialLink(index)}
-                      className="p-3 text-red-500 hover:bg-red-50 rounded-xl"
+                      className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -300,13 +307,13 @@ export default function ClientForm() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Ссылки на соцсети не добавлены</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('none')}</p>
             )}
           </div>
 
           {/* Session Format */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Формат сессий</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('format_online')}</h2>
 
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -317,7 +324,7 @@ export default function ClientForm() {
                     onChange={() => setFormData({ ...formData, isOnline: false })}
                     className="w-4 h-4 text-indigo-600"
                   />
-                  <span className="dark:text-gray-200">Очные встречи</span>
+                  <span className="dark:text-gray-200">{t('is_offline')}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -326,13 +333,13 @@ export default function ClientForm() {
                     onChange={() => setFormData({ ...formData, isOnline: true })}
                     className="w-4 h-4 text-indigo-600"
                   />
-                  <span className="dark:text-gray-200">Онлайн</span>
+                  <span className="dark:text-gray-200">{t('is_online')}</span>
                 </label>
               </div>
 
               {formData.isOnline && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ссылка на встречу</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('meeting_link')}</label>
                   <input
                     type="url"
                     value={formData.meetingLink}
@@ -347,20 +354,20 @@ export default function ClientForm() {
 
           {/* Package */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Пакет услуг</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('package')}</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Пакет</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('package')}</label>
                 <select
                   value={formData.packageId}
                   onChange={(e) => handlePackageChange(e.target.value)}
                   className="input-field"
                 >
-                  <option value="">Без пакета</option>
+                  <option value="">{t('no_package')}</option>
                   {user?.packages.map(pkg => (
                     <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} ({pkg.sessions} сессий - {pkg.price.toLocaleString()} {user.currency})
+                      {pkg.name} ({pkg.sessions} {t('sessions')} — {pkg.price.toLocaleString()} {user.currency})
                     </option>
                   ))}
                 </select>
@@ -368,7 +375,7 @@ export default function ClientForm() {
 
               {formData.packageId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Осталось сессий</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('remaining_sessions')}</label>
                   <input
                     type="number"
                     value={formData.remainingSessions}
@@ -385,14 +392,14 @@ export default function ClientForm() {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">Расписание</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{t('schedule')}</h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Регулярные слоты генерируются автоматически
+                  {t('schedule_frequency')}
                 </p>
               </div>
               <button type="button" onClick={addSchedule} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
                 <Plus className="w-4 h-4" />
-                Добавить
+                {t('add')}
               </button>
             </div>
 
@@ -420,12 +427,9 @@ export default function ClientForm() {
                       onChange={(e) => updateSchedule(schedule.id, { duration: parseInt(e.target.value) })}
                       className="input-field w-auto text-sm"
                     >
-                      <option value={30}>30 мин</option>
-                      <option value={45}>45 мин</option>
-                      <option value={50}>50 мин</option>
-                      <option value={60}>60 мин</option>
-                      <option value={90}>90 мин</option>
-                      <option value={120}>120 мин</option>
+                      {Object.entries(durationLabels).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
                     </select>
                     <select
                       value={schedule.frequency ?? 'weekly'}
@@ -439,7 +443,7 @@ export default function ClientForm() {
                     <button
                       type="button"
                       onClick={() => removeSchedule(schedule.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg ml-auto"
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg ml-auto"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -447,29 +451,28 @@ export default function ClientForm() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Расписание не задано</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('no_schedule')}</p>
             )}
           </div>
 
           {/* Notes */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Заметки</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('notes')}</h2>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="input-field min-h-[120px] resize-y"
-              placeholder="Дополнительная информация о клиенте..."
             />
           </div>
 
           {/* Submit */}
           <div className="flex gap-4">
             <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1">
-              Отмена
+              {t('cancel')}
             </button>
             <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2">
               <Save className="w-5 h-5" />
-              {isEditing ? 'Сохранить' : 'Создать'}
+              {isEditing ? t('save') : t('add_client')}
             </button>
           </div>
         </form>

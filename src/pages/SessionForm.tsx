@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, X, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import Layout from '../components/Layout';
 
@@ -12,16 +13,15 @@ export default function SessionForm() {
     addSession, updateSession, sessions, getClientById, user,
     appointments, addAppointment, updateAppointment, updateClient, clients,
   } = useApp();
+  const { t } = useLanguage();
 
   const isEditing = !!sessionId;
   const existingSession = sessions.find(s => s.id === sessionId);
   const clientId = urlClientId || existingSession?.clientId || '';
   const client = getClientById(clientId);
 
-  // Track if form was initialized from existing session
   const initializedRef = useRef(false);
 
-  // Use client's individual rate if set, otherwise global rate
   const defaultAmount = client?.individualRate ?? user?.hourlyRate ?? 3000;
 
   const [formData, setFormData] = useState({
@@ -39,9 +39,8 @@ export default function SessionForm() {
   const [topics, setTopics] = useState<string[]>([]);
   const [newTopic, setNewTopic] = useState('');
 
-  // Initialize form ONCE from existing session — never re-run when user changes
   useEffect(() => {
-      if (isEditing && existingSession && !initializedRef.current) {
+    if (isEditing && existingSession && !initializedRef.current) {
       initializedRef.current = true;
       setFormData({
         date: existingSession.date,
@@ -58,7 +57,7 @@ export default function SessionForm() {
       setTopics(existingSession.topics || []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, existingSession?.id]); // Only re-init if sessionId changes
+  }, [isEditing, existingSession?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +69,6 @@ export default function SessionForm() {
     if (isEditing && sessionId) {
       await updateSession(sessionId, sessionData);
 
-      // Sync related appointment status
       const relatedApt = appointments.find(a =>
         a.clientId === clientId && a.date === formData.date && a.time === formData.time
       );
@@ -78,7 +76,6 @@ export default function SessionForm() {
         await updateAppointment(relatedApt.id, { status: formData.status });
       }
     } else {
-      // NEW session → find or create appointment first, then link
       let aptId: string | undefined;
       const existingApt = appointments.find(a =>
         a.clientId === clientId && a.date === formData.date && a.time === formData.time
@@ -101,7 +98,6 @@ export default function SessionForm() {
       await addSession({ ...sessionData, appointmentId: aptId });
     }
 
-    // Deduct from package only when transitioning TO completed
     if (!wasCompleted && isNowCompleted) {
       const currentClient = clients.find(c => c.id === clientId);
       if (currentClient?.packageId && (currentClient.remainingSessions ?? 0) > 0) {
@@ -116,10 +112,8 @@ export default function SessionForm() {
     }
   };
 
-  // Find the appointment that belongs to this session (to exclude it from conflict check)
   const ownAppointment = useMemo(() => {
     if (!existingSession) return null;
-    // Match by appointmentId stored on session, or by date+time+clientId
     return appointments.find(a =>
       (existingSession.appointmentId && a.id === existingSession.appointmentId) ||
       (a.clientId === existingSession.clientId &&
@@ -128,11 +122,9 @@ export default function SessionForm() {
     ) || null;
   }, [existingSession, appointments]);
 
-  // Conflict check — exclude the appointment that belongs to THIS session
   const hasConflict = (): boolean => {
     if (!formData.date || !formData.time) return false;
     return appointments.some(a => {
-      // Skip own appointment when editing
       if (ownAppointment && a.id === ownAppointment.id) return false;
       if (a.date !== formData.date) return false;
       const [aH, aM] = a.time.split(':').map(Number);
@@ -155,17 +147,23 @@ export default function SessionForm() {
   };
   const removeTopic = (topic: string) => setTopics(topics.filter(t => t !== topic));
 
-  const moodLabels = [
-    'Очень плохо', 'Плохо', 'Ниже среднего', 'Удовлетворительно', 'Нормально',
-    'Хорошо', 'Довольно хорошо', 'Очень хорошо', 'Отлично', 'Превосходно'
+  const moodLabels = (t('mood_labels') as unknown as string[]);
+
+  const statusOptions = [
+    { value: 'completed', label: t('status_completed_session'), color: 'bg-green-100 border-green-500 text-green-700' },
+    { value: 'scheduled', label: t('status_scheduled'),          color: 'bg-blue-100 border-blue-500 text-blue-700' },
+    { value: 'cancelled', label: t('status_cancelled'),          color: 'bg-red-100 border-red-500 text-red-700' },
+    { value: 'no-show',   label: t('status_no_show'),            color: 'bg-yellow-100 border-yellow-500 text-yellow-700' },
   ];
+
+  const clientCurrency = client?.individualCurrency || user?.currency || '₽';
 
   if (!client) {
     return (
       <Layout>
         <div className="text-center py-16">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Клиент не найден</h2>
-          <button onClick={() => navigate(-1)} className="btn-primary">Назад</button>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t('client_not_found')}</h2>
+          <button onClick={() => navigate(-1)} className="btn-primary">{t('back')}</button>
         </div>
       </Layout>
     );
@@ -181,9 +179,9 @@ export default function SessionForm() {
           </button>
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate">
-              {isEditing ? 'Редактировать сессию' : 'Новая запись о сессии'}
+              {isEditing ? t('edit_session') : t('new_session')}
             </h1>
-            <p className="text-gray-500 text-sm truncate">Клиент: {client.name}</p>
+            <p className="text-gray-500 text-sm truncate">{t('client_label')}: {client.name}</p>
           </div>
         </div>
 
@@ -191,17 +189,17 @@ export default function SessionForm() {
         {conflict && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-red-700 text-sm">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <span>⚠️ В это время уже запланирована другая сессия. Пожалуйста, выберите другое время.</span>
+            <span>⚠️ {t('status_scheduled')} — {t('time')} {t('not_specified')}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Date & Time */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Дата и время</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_date')} & {t('session_time')}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Дата</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t('session_date')}</label>
                 <input
                   type="date"
                   value={formData.date}
@@ -211,7 +209,7 @@ export default function SessionForm() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Время</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t('session_time')}</label>
                 <input
                   type="time"
                   value={formData.time}
@@ -221,18 +219,18 @@ export default function SessionForm() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Длит.</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t('session_duration')}</label>
                 <select
                   value={formData.duration}
                   onChange={e => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
                   className="input-field"
                 >
-                  <option value={30}>30 мин</option>
-                  <option value={45}>45 мин</option>
-                  <option value={50}>50 мин</option>
-                  <option value={60}>60 мин</option>
-                  <option value={90}>90 мин</option>
-                  <option value={120}>120 мин</option>
+                  <option value={30}>30 {t('minutes')}</option>
+                  <option value={45}>45 {t('minutes')}</option>
+                  <option value={50}>50 {t('minutes')}</option>
+                  <option value={60}>60 {t('minutes')}</option>
+                  <option value={90}>90 {t('minutes')}</option>
+                  <option value={120}>120 {t('minutes')}</option>
                 </select>
               </div>
             </div>
@@ -240,14 +238,9 @@ export default function SessionForm() {
 
           {/* Status */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Статус сессии</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_status')}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { value: 'completed',  label: 'Проведена',     color: 'bg-green-100 border-green-500 text-green-700' },
-                { value: 'scheduled',  label: 'Запланирована', color: 'bg-blue-100 border-blue-500 text-blue-700' },
-                { value: 'cancelled',  label: 'Отменена',      color: 'bg-red-100 border-red-500 text-red-700' },
-                { value: 'no-show',    label: 'Неявка',        color: 'bg-yellow-100 border-yellow-500 text-yellow-700' },
-              ].map(s => (
+              {statusOptions.map(s => (
                 <button
                   key={s.value}
                   type="button"
@@ -264,7 +257,7 @@ export default function SessionForm() {
 
           {/* Topics */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Темы сессии</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_topics')}</h2>
             <div className="flex gap-2 mb-3">
               <input
                 type="text"
@@ -272,7 +265,7 @@ export default function SessionForm() {
                 onChange={e => setNewTopic(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTopic())}
                 className="input-field flex-1 text-sm"
-                placeholder="Добавить тему..."
+                placeholder={t('enter_topic')}
               />
               <button type="button" onClick={addTopic} className="btn-secondary p-3 flex-shrink-0">
                 <Plus className="w-4 h-4" />
@@ -294,18 +287,15 @@ export default function SessionForm() {
 
           {/* Mood */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">
-              Состояние клиента
-            </h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_mood')}</h2>
             <div className="space-y-3">
               <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                <span>Очень плохо</span>
+                <span>{moodLabels[0]}</span>
                 <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                   {formData.mood} / 10 — {moodLabels[formData.mood - 1]}
                 </span>
-                <span>Превосходно</span>
+                <span>{moodLabels[9]}</span>
               </div>
-              {/* Visual mood buttons instead of slider — always visible */}
               <div className="grid grid-cols-10 gap-1">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map(val => (
                   <button
@@ -329,42 +319,38 @@ export default function SessionForm() {
 
           {/* Notes */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Заметки о сессии</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_notes')}</h2>
             <textarea
               value={formData.notes}
               onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               className="input-field min-h-[120px] resize-y text-sm"
-              placeholder="Опишите, что обсуждали на сессии..."
             />
           </div>
 
           {/* Homework */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Домашнее задание</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_homework')}</h2>
             <textarea
               value={formData.homework}
               onChange={e => setFormData(prev => ({ ...prev, homework: e.target.value }))}
               className="input-field min-h-[80px] resize-y text-sm"
-              placeholder="Что клиент должен сделать до следующей сессии..."
             />
           </div>
 
           {/* Goals */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Цели на следующую сессию</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_goals')}</h2>
             <textarea
               value={formData.nextSessionGoals}
               onChange={e => setFormData(prev => ({ ...prev, nextSessionGoals: e.target.value }))}
               className="input-field min-h-[80px] resize-y text-sm"
-              placeholder="Над чем планируете работать в следующий раз..."
             />
           </div>
 
           {/* Payment */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Оплата</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t('session_paid')}</h2>
             <div className="space-y-3">
-              {/* Paid toggle as visible buttons */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -375,7 +361,7 @@ export default function SessionForm() {
                       : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-300'
                   }`}
                 >
-                  ✅ Оплачено
+                  ✅ {t('is_paid')}
                 </button>
                 <button
                   type="button"
@@ -386,7 +372,7 @@ export default function SessionForm() {
                       : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-300'
                   }`}
                 >
-                  ❌ Не оплачено
+                  ❌ {t('not_paid')}
                 </button>
               </div>
               <div className="flex items-center gap-2">
@@ -395,11 +381,11 @@ export default function SessionForm() {
                   value={formData.amount}
                   onChange={e => setFormData(prev => ({ ...prev, amount: parseInt(e.target.value) || 0 }))}
                   className="input-field text-sm flex-1"
-                  placeholder="Сумма"
+                  placeholder={t('session_amount')}
                   min={0}
                 />
                 <span className="text-gray-500 dark:text-gray-400 text-sm flex-shrink-0 font-medium">
-                  {user?.currency || '₽'}
+                  {clientCurrency}
                 </span>
               </div>
             </div>
@@ -407,7 +393,7 @@ export default function SessionForm() {
 
           <div className="flex gap-3 pb-4">
             <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1 text-sm">
-              Отмена
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -415,7 +401,7 @@ export default function SessionForm() {
               className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              {isEditing ? 'Сохранить изменения' : 'Создать запись'}
+              {isEditing ? t('save') : t('new_session')}
             </button>
           </div>
         </form>

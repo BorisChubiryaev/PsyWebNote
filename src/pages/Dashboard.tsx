@@ -93,6 +93,8 @@ export default function Dashboard() {
     ? `Добрый день, ${user?.name?.split(' ')[0] || 'Психолог'}! 👋`
     : `Hello, ${user?.name?.split(' ')[0] || 'Psychologist'}! 👋`;
 
+
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto animate-fadeIn">
@@ -110,8 +112,8 @@ export default function Dashboard() {
           {[
             { icon: Users,     bg: 'bg-indigo-100', color: 'text-indigo-600', value: stats.totalClients,                           label: t('active_clients') },
             { icon: DollarSign,bg: 'bg-green-100',  color: 'text-green-600',  value: `${stats.weeklyEarnings.toLocaleString()} ${user?.currency || '₽'}`, label: t('weekly_earnings') },
-            { icon: Clock,     bg: 'bg-purple-100', color: 'text-purple-600', value: `${stats.weeklyHours}${t('hours')}`,          label: language === 'ru' ? 'Отработано' : 'Completed' },
-            { icon: TrendingUp,bg: 'bg-amber-100',  color: 'text-amber-600',  value: `${stats.weeklyScheduledHours}${t('hours')}`, label: language === 'ru' ? 'Запланировано' : 'Scheduled' },
+            { icon: Clock,     bg: 'bg-purple-100', color: 'text-purple-600', value: `${stats.weeklyHours}${t('hours')}`,          label: t('status_completed_session') },
+            { icon: TrendingUp,bg: 'bg-amber-100',  color: 'text-amber-600',  value: `${stats.weeklyScheduledHours}${t('hours')}`, label: t('status_scheduled') },
           ].map((s, i) => (
             <div key={i} className="card p-4">
               <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-2`}>
@@ -140,7 +142,7 @@ export default function Dashboard() {
               <Package className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-amber-800 mb-1">
-                  {language === 'ru' ? 'Заканчивается пакет сессий' : 'Session package running low'}
+                  {t('package_sessions')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {lowPackageClients.map(c => (
