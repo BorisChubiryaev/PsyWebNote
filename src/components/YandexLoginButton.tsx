@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 /**
  * Яндекс OAuth 2.0 login button
  *
@@ -31,13 +32,13 @@ interface Props {
 
 export default function YandexLoginButton({
   disabled,
-  label = 'Войти через Яндекс',
+  label = TR("Войти через Яндекс", "Login via Yandex"),
 }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = () => {
     if (!YANDEX_CLIENT_ID) {
-      alert('Yandex Client ID не настроен. Добавьте VITE_YANDEX_CLIENT_ID в .env');
+      alert(TR("Yandex Client ID не настроен. Добавьте VITE_YANDEX_CLIENT_ID в .env", "Yandex Client ID is not configured. Add VITE_YANDEX_CLIENT_ID to .env"));
       return;
     }
 
@@ -64,10 +65,10 @@ export default function YandexLoginButton({
       onClick={handleClick}
       disabled={disabled || loading || !YANDEX_CLIENT_ID}
       className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[#FFCC00]/40 bg-[#FFCC00]/10 hover:bg-[#FFCC00]/20 rounded-2xl transition-all disabled:opacity-50 font-medium text-[#D4A500]"
-      title={!YANDEX_CLIENT_ID ? 'Добавьте VITE_YANDEX_CLIENT_ID в .env' : undefined}
+      title={!YANDEX_CLIENT_ID ? TR("Добавьте VITE_YANDEX_CLIENT_ID в .env", "Add VITE_YANDEX_CLIENT_ID to .env") : undefined}
     >
       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <YandexIcon />}
-      {loading ? 'Переходим в Яндекс...' : label}
+      {loading ? TR("Переходим в Яндекс...", "Let's go to Yandex...") : label}
     </button>
   );
 }
