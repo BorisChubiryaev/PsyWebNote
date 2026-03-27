@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 /**
  * VKontakte OAuth 2.1 (PKCE)
  *
@@ -83,14 +84,14 @@ interface Props {
 
 export default function VKLoginButton({
   disabled,
-  label = 'Войти через ВКонтакте',
+  label = TR("Войти через ВКонтакте", "Login via VKontakte"),
 }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
     if (!VK_APP_ID) {
       alert(
-        'VK App ID не настроен.\nДобавьте VITE_VK_APP_ID в .env и в Vercel → Settings → Environment Variables.',
+        TR("VK App ID не настроен.\nДобавьте VITE_VK_APP_ID в .env и в Vercel → Settings → Environment Variables.", "VK App ID is not configured.\nAdd VITE_VK_APP_ID to .env and to Vercel → Settings → Environment Variables."),
       );
       return;
     }
@@ -131,10 +132,10 @@ export default function VKLoginButton({
       onClick={handleClick}
       disabled={disabled || loading || !VK_APP_ID}
       className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[#0077FF]/30 bg-[#0077FF]/5 hover:bg-[#0077FF]/10 rounded-2xl transition-all disabled:opacity-50 font-medium text-[#0077FF]"
-      title={!VK_APP_ID ? 'Добавьте VITE_VK_APP_ID в настройки' : undefined}
+      title={!VK_APP_ID ? TR("Добавьте VITE_VK_APP_ID в настройки", "Add VITE_VK_APP_ID to settings") : undefined}
     >
       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <VKIcon />}
-      {loading ? 'Переходим в VK...' : label}
+      {loading ? TR("Переходим в VK...", "Let's go to VK...") : label}
     </button>
   );
 }
