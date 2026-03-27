@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -97,11 +98,11 @@ export default function Layout({ children }: LayoutProps) {
               <img src={user.avatar} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
             ) : (
               <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
-                {user?.name?.charAt(0) || 'П'}
+                {user?.name?.charAt(0) || TR("П", "P")}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 dark:text-white truncate text-sm">{user?.name || 'Психолог'}</p>
+              <p className="font-medium text-gray-900 dark:text-white truncate text-sm">{user?.name || TR("Психолог", "Psychologist")}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.therapyType?.split(' ')[0] || t('app_subtitle')}</p>
             </div>
           </div>
