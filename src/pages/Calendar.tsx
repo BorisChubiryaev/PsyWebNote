@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Plus, Video, MapPin,
-  Clock, X, Calendar as CalendarIcon, List, Grid3X3, Edit, AlertCircle, Loader2
+  Clock, X, Calendar as CalendarIcon, List, Grid3X3, Edit, AlertCircle, Loader2,
+  Link2, Copy, Check, RefreshCw, Smartphone, Info
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -16,14 +17,83 @@ import { ru } from 'date-fns/locale';
 import { enUS } from 'date-fns/locale';
 import Layout from '../components/Layout';
 import { Appointment } from '../types';
+import { ensureCalToken, regenerateCalToken } from '../services/api';
 
 type ViewMode = 'month' | 'week' | 'day';
 
 export default function Calendar() {
-  const { appointments, clients, addAppointment, ensureSessionForAppointment } = useApp();
+  const { appointments, clients, addAppointment, ensureSessionForAppointment, user } = useApp();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const dateLocale = language === 'en' ? enUS : ru;
+
+  // ── Webcal state ──────────────────────────────────────────
+  const [webcalToken, setWebcalToken] = useState<string | null>(user?.calToken ?? null);
+  const [webcalLoading, setWebcalLoading] = useState(false);
+  const [webcalCopied, setWebcalCopied] = useState(false);
+  const [showWebcalPanel, setShowWebcalPanel] = useState(false);
+
+  // Derive the public feed URL from the token
+  const feedBaseUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/calendar-feed`
+    : '/api/calendar-feed';
+
+  const webcalUrl = webcalToken
+    ? `webcal://${feedBaseUrl.replace(/^https?:\/\//, '')}?token=${webcalToken}`
+    : null;
+
+  const httpsUrl = webcalToken
+    ? `${feedBaseUrl}?token=${webcalToken}`
+    : null;
+
+  const handleGetWebcalLink = useCallback(async () => {
+    if (!user?.id) return;
+    setWebcalLoading(true);
+    try {
+      const token = await ensureCalToken(user.id);
+      setWebcalToken(token);
+    } finally {
+      setWebcalLoading(false);
+    }
+  }, [user?.id]);
+
+  const handleResetWebcalLink = useCallback(async () => {
+    if (!user?.id) return;
+    if (!window.confirm(t('webcal_reset_confirm'))) return;
+    setWebcalLoading(true);
+    try {
+      const token = await regenerateCalToken(user.id);
+      setWebcalToken(token);
+    } finally {
+      setWebcalLoading(false);
+    }
+  }, [user?.id, t]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!httpsUrl) return;
+    try {
+      await navigator.clipboard.writeText(httpsUrl);
+      setWebcalCopied(true);
+      setTimeout(() => setWebcalCopied(false), 2000);
+    } catch {
+      // Fallback
+      const el = document.createElement('textarea');
+      el.value = httpsUrl;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setWebcalCopied(true);
+      setTimeout(() => setWebcalCopied(false), 2000);
+    }
+  }, [httpsUrl]);
+
+  // Load token on mount if user already has one
+  useEffect(() => {
+    if (user?.calToken && !webcalToken) {
+      setWebcalToken(user.calToken);
+    }
+  }, [user?.calToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -208,6 +278,16 @@ export default function Calendar() {
               }
               {t('edit')}
             </button>
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                exportAppointmentToIOS(apt);
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-white/60 rounded text-xs font-medium hover:bg-white/90"
+            >
+              <Download className="w-3 h-3" />
+              {t('ios_sync_one')}
+            </button>
           </div>
         )}
       </div>
@@ -215,6 +295,29 @@ export default function Calendar() {
   };
 
   const activeClients = clients.filter(c => c.status === 'active');
+
+  const exportAppointmentToIOS = useCallback((apt: Appointment) => {
+    const ics = buildAppointmentsIcs([apt], language);
+    const stamp = `${apt.date}_${apt.time.replace(':', '-')}`;
+    downloadIcs(ics, `psywebnote-${stamp}.ics`);
+  }, [language]);
+
+  const exportUpcomingToIOS = useCallback(() => {
+    const now = new Date();
+    const upcoming = appointments.filter((apt) => {
+      if (apt.status === 'cancelled') return false;
+      const startsAt = new Date(`${apt.date}T${apt.time}:00`);
+      return startsAt >= now;
+    });
+
+    if (upcoming.length === 0) {
+      window.alert(t('ios_sync_empty'));
+      return;
+    }
+
+    const ics = buildAppointmentsIcs(upcoming, language);
+    downloadIcs(ics, 'psywebnote-ios-calendar.ics');
+  }, [appointments, language, t]);
 
   return (
     <Layout>
@@ -226,9 +329,22 @@ export default function Calendar() {
             <h1 className="text-xl lg:text-3xl font-bold text-gray-900 dark:text-white">{t('calendar_title')}</h1>
             <p className="text-gray-500 text-sm">{t('today_schedule')}</p>
           </div>
-          <button onClick={() => openAddModal()} className="btn-primary flex items-center gap-2 justify-center text-sm">
-            <Plus className="w-4 h-4" /> {t('new_appointment')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportUpcomingToIOS}
+              className="btn-secondary flex items-center gap-2 justify-center text-sm"
+            >
+              <Download className="w-4 h-4" />
+              {t('ios_sync_all')}
+            </button>
+            <button onClick={() => openAddModal()} className="btn-primary flex items-center gap-2 justify-center text-sm">
+              <Plus className="w-4 h-4" /> {t('new_appointment')}
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          {t('ios_sync_hint')}
         </div>
 
         {/* View Switcher */}
