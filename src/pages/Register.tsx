@@ -1,9 +1,9 @@
+import { TR } from '../utils/tr';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useApp } from '../context/AppContext';
 import { Eye, EyeOff, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
-import VKLoginButton from '../components/VKLoginButton';
 import YandexLoginButton from '../components/YandexLoginButton';
 
 export default function Register() {
@@ -23,16 +23,16 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !password) { setError('Заполните все поля'); return; }
-    if (password.length < 6)          { setError('Пароль не менее 6 символов'); return; }
-    if (password !== confirm)          { setError('Пароли не совпадают'); return; }
+    if (!name || !email || !password) { setError(TR("Заполните все поля", "Fill in all fields")); return; }
+    if (password.length < 6)          { setError(TR("Пароль не менее 6 символов", "Password of at least 6 characters")); return; }
+    if (password !== confirm)          { setError(TR("Пароли не совпадают", "Passwords don't match")); return; }
 
     setLoading(true);
     const res = await register(email.trim().toLowerCase(), password, name.trim());
     setLoading(false);
 
     if (res.success) navigate('/onboarding');
-    else setError(res.error || 'Ошибка регистрации');
+    else setError(res.error || TR("Ошибка регистрации", "Registration error"));
   };
 
   // ── Google register ──────────────────────────────────────────
@@ -45,21 +45,21 @@ export default function Register() {
           headers: { Authorization: `Bearer ${token.access_token}` },
         });
         const p = await res.json();
-        if (!p.email) throw new Error('Не удалось получить email из Google');
+        if (!p.email) throw new Error(TR("Не удалось получить email из Google", "Failed to get email from Google"));
 
         const lr = await login(p.email, `google_${p.sub}`);
         if (lr.success) { navigate('/dashboard'); return; }
 
         const rr = await register(p.email, `google_${p.sub}`, p.name ?? p.email.split('@')[0]);
         if (rr.success) navigate('/onboarding');
-        else setError(rr.error || 'Ошибка регистрации через Google');
+        else setError(rr.error || TR("Ошибка регистрации через Google", "Google registration failed"));
       } catch (ex: unknown) {
-        setError(ex instanceof Error ? ex.message : 'Ошибка Google OAuth');
+        setError(ex instanceof Error ? ex.message : TR("Ошибка Google OAuth", "Google OAuth Error"));
       } finally {
         setGLoading(false);
       }
     },
-    onError: () => { setError('Вход через Google не удался'); setGLoading(false); },
+    onError: () => { setError(TR("Вход через Google не удался", "Login with Google failed")); setGLoading(false); },
   });
 
   return (
@@ -77,8 +77,7 @@ export default function Register() {
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          На главную
-        </button>
+          {TR("\n          На главную\n        ", "Home")}</button>
 
         {/* Logo */}
         <div className="text-center mb-8">
@@ -86,9 +85,8 @@ export default function Register() {
             <span className="text-white font-black text-2xl">Ψ</span>
           </div>
           <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Регистрация в PsyWebNote
-          </h1>
-          <p className="text-gray-500 mt-1 text-sm">Создайте профессиональный аккаунт</p>
+            {TR("\n            Регистрация в PsyWebNote\n          ", "Registration in PsyWebNote")}</h1>
+          <p className="text-gray-500 mt-1 text-sm">{TR("Создайте профессиональный аккаунт", "Create a professional account")}</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/60 p-6 border border-gray-100">
@@ -104,7 +102,7 @@ export default function Register() {
               {gLoading
                 ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                 : <GoogleIcon />}
-              {gLoading ? 'Входим...' : 'Продолжить с Google'}
+              {gLoading ? TR("Входим...", "Let's go...") : TR("Продолжить с Google", "Continue with Google")}
             </button>
 
             {/* <VKLoginButton
@@ -114,13 +112,13 @@ export default function Register() {
 
             <YandexLoginButton
               disabled={loading || gLoading}
-              label="Продолжить с Яндексом"
+              label={TR("Продолжить с Яндексом", "Continue with Yandex")}
             />
           </div>
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">или через email</span>
+            <span className="text-xs text-gray-400 font-medium">{TR("или через email", "or via email")}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
@@ -135,12 +133,12 @@ export default function Register() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Ваше имя</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{TR("Ваше имя", "your name")}</label>
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Анна Психолог"
+                placeholder={TR("Анна Психолог", "Anna Psychologist")}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
                 autoComplete="name"
               />
@@ -159,13 +157,13 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Пароль</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{TR("Пароль", "Password")}</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Минимум 6 символов"
+                  placeholder={TR("Минимум 6 символов", "Minimum 6 characters")}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm pr-12"
                   autoComplete="new-password"
                 />
@@ -180,12 +178,12 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Повторите пароль</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{TR("Повторите пароль", "Repeat password")}</label>
               <input
                 type={showPw ? 'text' : 'password'}
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
-                placeholder="Повторите пароль"
+                placeholder={TR("Повторите пароль", "Repeat password")}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
                 autoComplete="new-password"
               />
@@ -197,23 +195,22 @@ export default function Register() {
               className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Создаём аккаунт...</>
-                : 'Создать аккаунт'}
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> {TR(" Создаём аккаунт...", "Let's create an account...")}</>
+                : TR("Создать аккаунт", "Create an account")}
             </button>
           </form>
 
           <p className="text-center text-xs text-gray-400 mt-4 leading-relaxed">
-            Регистрируясь, вы принимаете{' '}
-            <span className="text-indigo-500 cursor-pointer hover:underline">условия использования</span>
-            {' '}и{' '}
-            <span className="text-indigo-500 cursor-pointer hover:underline">политику конфиденциальности</span>
+            {TR("\n            Регистрируясь, вы принимаете", "By registering, you accept")}{' '}
+            <span className="text-indigo-500 cursor-pointer hover:underline">{TR("условия использования", "terms of use")}</span>
+            {' '}{TR("и", "And")}{' '}
+            <span className="text-indigo-500 cursor-pointer hover:underline">{TR("политику конфиденциальности", "privacy policy")}</span>
           </p>
 
           <p className="text-center text-sm text-gray-500 mt-4">
-            Уже есть аккаунт?{' '}
+            {TR("\n            Уже есть аккаунт?", "Already have an account?")}{' '}
             <Link to="/login" className="text-indigo-600 font-semibold hover:underline">
-              Войти
-            </Link>
+              {TR("\n              Войти\n            ", "Login")}</Link>
           </p>
         </div>
       </div>

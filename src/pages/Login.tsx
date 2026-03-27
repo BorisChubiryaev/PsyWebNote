@@ -1,9 +1,9 @@
+import { TR } from '../utils/tr';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useApp } from '../context/AppContext';
 import { Eye, EyeOff, Loader2, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react';
-import VKLoginButton from '../components/VKLoginButton';
 import YandexLoginButton from '../components/YandexLoginButton';
 
 export default function Login() {
@@ -20,13 +20,13 @@ export default function Login() {
   // ── Email login ──────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { setError('Заполните все поля'); return; }
+    if (!email || !password) { setError(TR("Заполните все поля", "Fill in all fields")); return; }
     setError('');
     setLoading(true);
     const res = await login(email.trim().toLowerCase(), password);
     setLoading(false);
     if (res.success) navigate('/dashboard');
-    else setError(res.error || 'Неверный email или пароль');
+    else setError(res.error || TR("Неверный email или пароль", "Invalid email or password"));
   };
 
   // ── Google login ─────────────────────────────────────────────
@@ -39,25 +39,25 @@ export default function Login() {
           headers: { Authorization: `Bearer ${token.access_token}` },
         });
         const p = await res.json();
-        if (!p.email) throw new Error('Не удалось получить email из Google');
+        if (!p.email) throw new Error(TR("Не удалось получить email из Google", "Failed to get email from Google"));
 
         const lr = await login(p.email, `google_${p.sub}`);
         if (lr.success) { navigate('/dashboard'); return; }
 
         const rr = await register(p.email, `google_${p.sub}`, p.name ?? p.email.split('@')[0]);
         if (rr.success) navigate('/onboarding');
-        else setError(rr.error || 'Ошибка входа через Google');
+        else setError(rr.error || TR("Ошибка входа через Google", "Google login error"));
       } catch (ex: unknown) {
-        setError(ex instanceof Error ? ex.message : 'Ошибка Google OAuth');
+        setError(ex instanceof Error ? ex.message : TR("Ошибка Google OAuth", "Google OAuth Error"));
       } finally {
         setGLoading(false);
       }
     },
-    onError: () => { setError('Вход через Google не удался'); setGLoading(false); },
+    onError: () => { setError(TR("Вход через Google не удался", "Login with Google failed")); setGLoading(false); },
   });
 
   const clearData = () => {
-    if (confirm('Удалить все локальные данные? (это не удалит данные в Supabase)')) {
+    if (confirm(TR("Удалить все локальные данные? (это не удалит данные в Supabase)", "Delete all local data? (this will not delete data in Supabase)"))) {
       Object.keys(localStorage)
         .filter(k => k.startsWith('psywebnote'))
         .forEach(k => localStorage.removeItem(k));
@@ -80,8 +80,7 @@ export default function Login() {
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          На главную
-        </button>
+          {TR("\n          На главную\n        ", "Home")}</button>
 
         {/* Logo */}
         <div className="text-center mb-8">
@@ -89,9 +88,8 @@ export default function Login() {
             <span className="text-white font-black text-2xl">Ψ</span>
           </div>
           <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Вход в PsyWebNote
-          </h1>
-          <p className="text-gray-500 mt-1 text-sm">Войдите в свой аккаунт</p>
+            {TR("\n            Вход в PsyWebNote\n          ", "Login to PsyWebNote")}</h1>
+          <p className="text-gray-500 mt-1 text-sm">{TR("Войдите в свой аккаунт", "Login to your account")}</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/60 p-6 border border-gray-100">
@@ -108,7 +106,7 @@ export default function Login() {
               {gLoading
                 ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                 : <GoogleIcon />}
-              {gLoading ? 'Входим...' : 'Войти через Google'}
+              {gLoading ? TR("Входим...", "Let's go...") : TR("Войти через Google", "Login with Google")}
             </button>
 
             {/* VK */}
@@ -120,7 +118,7 @@ export default function Login() {
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">или через email</span>
+            <span className="text-xs text-gray-400 font-medium">{TR("или через email", "or via email")}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
@@ -147,13 +145,13 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Пароль</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{TR("Пароль", "Password")}</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Ваш пароль"
+                  placeholder={TR("Ваш пароль", "Your password")}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm pr-12"
                   autoComplete="current-password"
                 />
@@ -173,16 +171,15 @@ export default function Login() {
               className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Входим...</>
-                : 'Войти'}
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> {TR(" Входим...", "Let's go...")}</>
+                : TR("Войти", "Login")}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-5">
-            Нет аккаунта?{' '}
+            {TR("\n            Нет аккаунта?", "Don't have an account?")}{' '}
             <Link to="/register" className="text-indigo-600 font-semibold hover:underline">
-              Зарегистрироваться
-            </Link>
+              {TR("\n              Зарегистрироваться\n            ", "Register")}</Link>
           </p>
         </div>
 
@@ -192,8 +189,7 @@ export default function Login() {
           className="mx-auto mt-4 flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          Очистить локальные данные
-        </button>
+          {TR("\n          Очистить локальные данные\n        ", "Clear local data")}</button>
       </div>
     </div>
   );

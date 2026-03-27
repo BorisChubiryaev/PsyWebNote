@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -7,28 +8,28 @@ import {
 import { useApp } from '../context/AppContext';
 
 const THERAPY_TYPES = [
-  { id: 'cbt', name: 'Когнитивно-поведенческая терапия (КПТ)', emoji: '🧠' },
-  { id: 'gestalt', name: 'Гештальт-терапия', emoji: '🌀' },
-  { id: 'psychoanalysis', name: 'Психоанализ', emoji: '💭' },
-  { id: 'existential', name: 'Экзистенциальная терапия', emoji: '🌟' },
-  { id: 'humanistic', name: 'Гуманистическая терапия', emoji: '❤️' },
-  { id: 'systemic', name: 'Системная семейная терапия', emoji: '👨‍👩‍👧‍👦' },
-  { id: 'art', name: 'Арт-терапия', emoji: '🎨' },
-  { id: 'body', name: 'Телесно-ориентированная терапия', emoji: '🧘' },
-  { id: 'schema', name: 'Схема-терапия', emoji: '📐' },
-  { id: 'integrative', name: 'Интегративный подход', emoji: '🔗' },
-  { id: 'dbt', name: 'Диалектическая поведенческая терапия (ДПТ)', emoji: '⚖️' },
-  { id: 'other', name: 'Другое', emoji: '📋' },
+  { id: 'cbt', name: TR("Когнитивно-поведенческая терапия (КПТ)", "Cognitive Behavioral Therapy (CBT)"), emoji: '🧠' },
+  { id: 'gestalt', name: TR("Гештальт-терапия", "Gestalt therapy"), emoji: '🌀' },
+  { id: 'psychoanalysis', name: TR("Психоанализ", "Psychoanalysis"), emoji: '💭' },
+  { id: 'existential', name: TR("Экзистенциальная терапия", "Existential therapy"), emoji: '🌟' },
+  { id: 'humanistic', name: TR("Гуманистическая терапия", "Humanistic therapy"), emoji: '❤️' },
+  { id: 'systemic', name: TR("Системная семейная терапия", "Systemic family therapy"), emoji: '👨‍👩‍👧‍👦' },
+  { id: 'art', name: TR("Арт-терапия", "Art therapy"), emoji: '🎨' },
+  { id: 'body', name: TR("Телесно-ориентированная терапия", "Body-oriented therapy"), emoji: '🧘' },
+  { id: 'schema', name: TR("Схема-терапия", "Schema therapy"), emoji: '📐' },
+  { id: 'integrative', name: TR("Интегративный подход", "Integrative approach"), emoji: '🔗' },
+  { id: 'dbt', name: TR("Диалектическая поведенческая терапия (ДПТ)", "Dialectical Behavior Therapy (DBT)"), emoji: '⚖️' },
+  { id: 'other', name: TR("Другое", "Other"), emoji: '📋' },
 ];
 
 const DAYS = [
-  { id: 1, short: 'Пн', name: 'Понедельник' },
-  { id: 2, short: 'Вт', name: 'Вторник' },
-  { id: 3, short: 'Ср', name: 'Среда' },
-  { id: 4, short: 'Чт', name: 'Четверг' },
-  { id: 5, short: 'Пт', name: 'Пятница' },
-  { id: 6, short: 'Сб', name: 'Суббота' },
-  { id: 0, short: 'Вс', name: 'Воскресенье' },
+  { id: 1, short: TR("Пн", "Mon"), name: TR("Понедельник", "Monday") },
+  { id: 2, short: TR("Вт", "W"), name: TR("Вторник", "Tuesday") },
+  { id: 3, short: TR("Ср", "Wed"), name: TR("Среда", "Wednesday") },
+  { id: 4, short: TR("Чт", "Thu"), name: TR("Четверг", "Thursday") },
+  { id: 5, short: TR("Пт", "Fri"), name: TR("Пятница", "Friday") },
+  { id: 6, short: TR("Сб", "Sat"), name: TR("Суббота", "Saturday") },
+  { id: 0, short: TR("Вс", "Sun"), name: TR("Воскресенье", "Sunday") },
 ];
 
 const CURRENCIES = ['₽', '$', '€', '£', '₴', '₸'];
@@ -50,9 +51,9 @@ export default function Onboarding() {
   const [workStart, setWorkStart] = useState(user?.workingHours?.start || '09:00');
   const [workEnd, setWorkEnd] = useState(user?.workingHours?.end || '18:00');
   const [packages, setPackages] = useState(user?.packages || [
-    { id: '1', name: 'Базовый', sessions: 4, price: 20000, discount: 10 },
-    { id: '2', name: 'Стандарт', sessions: 8, price: 36000, discount: 15 },
-    { id: '3', name: 'Премиум', sessions: 12, price: 48000, discount: 20 },
+    { id: '1', name: TR("Базовый", "Base"), sessions: 4, price: 20000, discount: 10 },
+    { id: '2', name: TR("Стандарт", "Standard"), sessions: 8, price: 36000, discount: 15 },
+    { id: '3', name: TR("Премиум", "Premium"), sessions: 12, price: 48000, discount: 20 },
   ]);
 
   const totalSteps = 5;
@@ -61,7 +62,7 @@ export default function Onboarding() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert('Файл слишком большой. Максимум 2 МБ.');
+      alert(TR("Файл слишком большой. Максимум 2 МБ.", "The file is too large. Maximum 2 MB."));
       return;
     }
     const reader = new FileReader();
@@ -113,25 +114,22 @@ export default function Onboarding() {
                 <Brain className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Добро пожаловать в PsyWebNote! 👋
-              </h2>
+                {TR("\n                Добро пожаловать в PsyWebNote! 👋\n              ", "Welcome to PsyWebNote! 👋")}</h2>
               <p className="text-gray-500 text-lg">
-                Давайте настроим ваш рабочий кабинет за пару минут
-              </p>
+                {TR("\n                Давайте настроим ваш рабочий кабинет за пару минут\n              ", "Let's set up your office in a couple of minutes")}</p>
             </div>
 
             <div className="max-w-sm mx-auto space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <User className="w-4 h-4 inline mr-1" />
-                  Как к вам обращаться?
-                </label>
+                  {TR("\n                  Как к вам обращаться?\n                ", "How should I contact you?")}</label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   className="input-field text-center text-lg"
-                  placeholder="Анна Иванова"
+                  placeholder={TR("Анна Иванова", "Anna Ivanova")}
                   autoFocus
                 />
               </div>
@@ -160,8 +158,8 @@ export default function Onboarding() {
                   />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-gray-700">Фото профиля</p>
-                  <p className="text-xs text-gray-400">До 2 МБ, необязательно</p>
+                  <p className="text-sm font-medium text-gray-700">{TR("Фото профиля", "Profile photo")}</p>
+                  <p className="text-xs text-gray-400">{TR("До 2 МБ, необязательно", "Up to 2 MB, optional")}</p>
                 </div>
               </div>
             </div>
@@ -175,8 +173,8 @@ export default function Onboarding() {
               <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-4">
                 <Briefcase className="w-8 h-8 text-purple-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Ваше направление</h2>
-              <p className="text-gray-500">Выберите основной метод работы</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{TR("Ваше направление", "Your direction")}</h2>
+              <p className="text-gray-500">{TR("Выберите основной метод работы", "Select your main method of operation")}</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto max-h-[50vh] overflow-y-auto pr-1">
@@ -205,14 +203,14 @@ export default function Onboarding() {
               <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Стоимость услуг</h2>
-              <p className="text-gray-500">Укажите стоимость часа и пакеты</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{TR("Стоимость услуг", "Cost of services")}</h2>
+              <p className="text-gray-500">{TR("Укажите стоимость часа и пакеты", "Specify the cost per hour and packages")}</p>
             </div>
 
             <div className="max-w-lg mx-auto space-y-6">
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Стоимость сессии (60 мин)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Стоимость сессии (60 мин)", "Session cost (60 min)")}</label>
                   <input
                     type="number"
                     value={hourlyRate}
@@ -222,7 +220,7 @@ export default function Onboarding() {
                   />
                 </div>
                 <div className="w-24">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Валюта</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Валюта", "Currency")}</label>
                   <select
                     value={currency}
                     onChange={e => setCurrency(e.target.value)}
@@ -238,7 +236,7 @@ export default function Onboarding() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Package className="w-5 h-5 text-indigo-500" />
-                  <h3 className="font-semibold text-gray-800">Пакеты (необязательно)</h3>
+                  <h3 className="font-semibold text-gray-800">{TR("Пакеты (необязательно)", "Packages (optional)")}</h3>
                 </div>
                 <div className="space-y-3">
                   {packages.map((pkg, i) => (
@@ -249,7 +247,7 @@ export default function Onboarding() {
                           value={pkg.name}
                           onChange={e => updatePackage(i, 'name', e.target.value)}
                           className="input-field flex-1 text-sm"
-                          placeholder="Название"
+                          placeholder={TR("Название", "Name")}
                         />
                         <button
                           onClick={() => setPackages(prev => prev.filter((_, j) => j !== i))}
@@ -258,7 +256,7 @@ export default function Onboarding() {
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-xs text-gray-500">Сессий</label>
+                          <label className="text-xs text-gray-500">{TR("Сессий", "Sessions")}</label>
                           <input
                             type="number"
                             value={pkg.sessions}
@@ -268,7 +266,7 @@ export default function Onboarding() {
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-500">Цена ({currency})</label>
+                          <label className="text-xs text-gray-500">{TR("Цена (", "Price (")}{currency})</label>
                           <input
                             type="number"
                             value={pkg.price}
@@ -278,7 +276,7 @@ export default function Onboarding() {
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-500">Скидка %</label>
+                          <label className="text-xs text-gray-500">{TR("Скидка %", "Discount %")}</label>
                           <input
                             type="number"
                             value={pkg.discount}
@@ -296,8 +294,7 @@ export default function Onboarding() {
                     }])}
                     className="w-full p-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-indigo-400 hover:text-indigo-500 transition-colors text-sm"
                   >
-                    + Добавить пакет
-                  </button>
+                    {TR("\n                    + Добавить пакет\n                  ", "+ Add package")}</button>
                 </div>
               </div>
             </div>
@@ -311,23 +308,23 @@ export default function Onboarding() {
               <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
                 <User className="w-8 h-8 text-amber-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">О вас</h2>
-              <p className="text-gray-500">Расскажите немного о себе (необязательно)</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{TR("О вас", "About you")}</h2>
+              <p className="text-gray-500">{TR("Расскажите немного о себе (необязательно)", "Tell us a little about yourself (optional)")}</p>
             </div>
 
             <div className="max-w-lg mx-auto space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">О себе / описание</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{TR("О себе / описание", "About me / description")}</label>
                 <textarea
                   value={bio}
                   onChange={e => setBio(e.target.value)}
                   className="input-field min-h-[120px] resize-none"
-                  placeholder="Практикующий психолог с опытом работы более 5 лет. Специализация — работа с тревожными расстройствами, депрессией, самооценкой..."
+                  placeholder={TR("Практикующий психолог с опытом работы более 5 лет. Специализация — работа с тревожными расстройствами, депрессией, самооценкой...", "Practicing psychologist with more than 5 years of experience. Specialization - working with anxiety disorders, depression, self-esteem...")}
                   rows={4}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Телефон", "Telephone")}</label>
                 <input
                   type="tel"
                   value={phone}
@@ -347,13 +344,13 @@ export default function Onboarding() {
               <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Рабочее расписание</h2>
-              <p className="text-gray-500">Когда вы принимаете клиентов?</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{TR("Рабочее расписание", "Work schedule")}</h2>
+              <p className="text-gray-500">{TR("Когда вы принимаете клиентов?", "When do you accept clients?")}</p>
             </div>
 
             <div className="max-w-lg mx-auto space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Рабочие дни</label>
+                <label className="block text-sm font-medium text-gray-700 mb-3">{TR("Рабочие дни", "Working days")}</label>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {DAYS.map(day => (
                     <button
@@ -374,8 +371,7 @@ export default function Onboarding() {
               <div className="flex gap-4 items-center justify-center">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1" />Начало
-                  </label>
+                    <Clock className="w-4 h-4 inline mr-1" />{TR("Начало\n                  ", "Start")}</label>
                   <input
                     type="time"
                     value={workStart}
@@ -386,8 +382,7 @@ export default function Onboarding() {
                 <span className="text-gray-400 mt-6 text-xl">→</span>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1" />Конец
-                  </label>
+                    <Clock className="w-4 h-4 inline mr-1" />{TR("Конец\n                  ", "End")}</label>
                   <input
                     type="time"
                     value={workEnd}
@@ -400,8 +395,7 @@ export default function Onboarding() {
               <div className="bg-indigo-50 rounded-xl p-4 text-center">
                 <p className="text-sm text-indigo-700">
                   <Sparkles className="w-4 h-4 inline mr-1" />
-                  Вы сможете изменить все настройки позже в профиле
-                </p>
+                  {TR("\n                  Вы сможете изменить все настройки позже в профиле\n                ", "You can change all settings later in your profile")}</p>
               </div>
             </div>
           </div>
@@ -457,10 +451,10 @@ export default function Onboarding() {
             className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors px-4 py-2"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline">{step > 0 ? 'Назад' : 'Пропустить'}</span>
+            <span className="hidden sm:inline">{step > 0 ? TR("Назад", "Back") : TR("Пропустить", "Skip")}</span>
           </button>
 
-          <span className="text-sm text-gray-400">{step + 1} из {totalSteps}</span>
+          <span className="text-sm text-gray-400">{step + 1} {TR(" из ", "from")}{totalSteps}</span>
 
           {step < totalSteps - 1 ? (
             <button
@@ -468,8 +462,7 @@ export default function Onboarding() {
               disabled={!canProceed()}
               className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Далее
-              <ArrowRight className="w-5 h-5" />
+              {TR("\n              Далее\n              ", "Next")}<ArrowRight className="w-5 h-5" />
             </button>
           ) : (
             <button
@@ -478,8 +471,7 @@ export default function Onboarding() {
               className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-5 h-5" />
-              Начать работу!
-            </button>
+              {TR("\n              Начать работу!\n            ", "Get started!")}</button>
           )}
         </div>
       </div>

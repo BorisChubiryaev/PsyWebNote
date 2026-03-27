@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -90,7 +91,7 @@ export default function Dashboard() {
   );
 
   const greeting = language === 'ru'
-    ? `Добрый день, ${user?.name?.split(' ')[0] || 'Психолог'}! 👋`
+    ? `Добрый день, ${user?.name?.split(' ')[0] || TR("Психолог", "Psychologist")}! 👋`
     : `Hello, ${user?.name?.split(' ')[0] || 'Psychologist'}! 👋`;
 
 
@@ -163,7 +164,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-gray-900">{t('today_schedule')}</h2>
               <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                {stats.todayAppointments.length} {language === 'ru' ? 'встреч' : 'meetings'}
+                {stats.todayAppointments.length} {language === 'ru' ? TR("встреч", "meetings") : 'meetings'}
               </span>
             </div>
             {stats.todayAppointments.length > 0 ? (
@@ -192,12 +193,12 @@ export default function Dashboard() {
                         {navigatingId === apt.id
                           ? <Loader2 className="w-3 h-3 animate-spin" />
                           : <Edit className="w-3 h-3" />}
-                        {language === 'ru' ? 'Записать' : 'Record'}
+                        {language === 'ru' ? TR("Записать", "Write down") : 'Record'}
                       </button>
                       {apt.isOnline && apt.meetingLink && (
                         <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer"
                           className="py-1.5 px-2.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium">
-                          {language === 'ru' ? 'Войти' : 'Join'}
+                          {language === 'ru' ? TR("Войти", "Login") : 'Join'}
                         </a>
                       )}
                     </div>
@@ -217,7 +218,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-gray-900">{t('upcoming')}</h2>
               <Link to="/calendar" className="text-indigo-600 text-xs hover:text-indigo-700 flex items-center gap-1">
-                {language === 'ru' ? 'Все' : 'All'} <ChevronRight className="w-3.5 h-3.5" />
+                {language === 'ru' ? TR("Все", "All") : 'All'} <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {stats.upcomingAppointments.length > 0 ? (
@@ -262,7 +263,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-gray-900">{t('nav_clients')}</h2>
               <Link to="/clients" className="text-indigo-600 text-xs hover:text-indigo-700 flex items-center gap-1">
-                {language === 'ru' ? 'Все' : 'All'} <ChevronRight className="w-3.5 h-3.5" />
+                {language === 'ru' ? TR("Все", "All") : 'All'} <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {clients.length > 0 ? (
@@ -279,7 +280,7 @@ export default function Dashboard() {
                     )}
                     <p className="text-xs font-medium text-gray-900 text-center truncate w-full">{client.name.split(' ')[0]}</p>
                     {client.packageId && (
-                      <p className="text-[10px] text-indigo-600 mt-0.5">{client.remainingSessions} {language === 'ru' ? 'сес.' : 'ses.'}</p>
+                      <p className="text-[10px] text-indigo-600 mt-0.5">{client.remainingSessions} {language === 'ru' ? TR("сес.", "ses.") : 'ses.'}</p>
                     )}
                   </Link>
                 ))}

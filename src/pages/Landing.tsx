@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, Calendar, Users, FileText, BarChart2, Shield,
@@ -9,103 +10,103 @@ import { useState } from 'react';
 const features = [
   {
     icon: Users,
-    title: 'Управление клиентами',
-    desc: 'Полная база клиентов с историей, контактами, ссылками на соцсети и пакетами сессий.',
+    title: TR("Управление клиентами", "Client management"),
+    desc: TR("Полная база клиентов с историей, контактами, ссылками на соцсети и пакетами сессий.", "A complete client database with history, contacts, links to social networks and session packages."),
     color: 'from-blue-500 to-indigo-600',
     bg: 'bg-blue-50',
   },
   {
     icon: Calendar,
-    title: 'Умный календарь',
-    desc: 'День, неделя, месяц. Автоматическое расписание по дням недели. Проверка пересечений.',
+    title: TR("Умный календарь", "Smart calendar"),
+    desc: TR("День, неделя, месяц. Автоматическое расписание по дням недели. Проверка пересечений.", "Day, week, month. Automatic schedule by days of the week. Checking intersections."),
     color: 'from-purple-500 to-purple-700',
     bg: 'bg-purple-50',
   },
   {
     icon: FileText,
-    title: 'Журнал сессий',
-    desc: 'Заметки, темы, состояние клиента, домашние задания и цели для каждой встречи.',
+    title: TR("Журнал сессий", "Session log"),
+    desc: TR("Заметки, темы, состояние клиента, домашние задания и цели для каждой встречи.", "Notes, topics, client status, homework and goals for each meeting."),
     color: 'from-emerald-500 to-teal-600',
     bg: 'bg-emerald-50',
   },
   {
     icon: Brain,
-    title: 'AI-ассистент',
-    desc: 'Анализ динамики клиента, рекомендации по техникам, выявление рисков с помощью Mistral AI.',
+    title: TR("AI-ассистент", "AI assistant"),
+    desc: TR("Анализ динамики клиента, рекомендации по техникам, выявление рисков с помощью Mistral AI.", "Analysis of client dynamics, recommendations on techniques, identification of risks using Mistral AI."),
     color: 'from-pink-500 to-rose-600',
     bg: 'bg-pink-50',
   },
   {
     icon: BarChart2,
-    title: 'Отчёты и аналитика',
-    desc: 'Финансовые показатели, загрузка по дням, динамика клиентов и прогноз доходов.',
+    title: TR("Отчёты и аналитика", "Reports and analytics"),
+    desc: TR("Финансовые показатели, загрузка по дням, динамика клиентов и прогноз доходов.", "Financial indicators, daily load, customer dynamics and income forecast."),
     color: 'from-orange-500 to-amber-600',
     bg: 'bg-orange-50',
   },
   {
     icon: Zap,
-    title: 'Уведомления',
-    desc: 'Напоминания о предстоящих сессиях и уведомления о необходимости обновить статус встречи.',
+    title: TR("Уведомления", "Notifications"),
+    desc: TR("Напоминания о предстоящих сессиях и уведомления о необходимости обновить статус встречи.", "Reminders for upcoming sessions and notifications to update meeting status."),
     color: 'from-yellow-500 to-orange-500',
     bg: 'bg-yellow-50',
   },
 ];
 
 const benefits = [
-  'Ведите записи сессий прямо во время встречи',
-  'Автоматическое расписание по дням недели',
-  'Пакеты сессий с автоматическим списанием',
-  'AI-анализ прогресса каждого клиента',
-  'Финансовая аналитика и отчёты',
-  'Работает на любом устройстве',
-  'Уведомления о пропущенных статусах',
-  'Синхронизация данных в облаке',
+  TR("Ведите записи сессий прямо во время встречи", "Record sessions during the meeting"),
+  TR("Автоматическое расписание по дням недели", "Automatic schedule by days of the week"),
+  TR("Пакеты сессий с автоматическим списанием", "Session packages with automatic debiting"),
+  TR("AI-анализ прогресса каждого клиента", "AI analysis of each client's progress"),
+  TR("Финансовая аналитика и отчёты", "Financial analytics and reports"),
+  TR("Работает на любом устройстве", "Works on any device"),
+  TR("Уведомления о пропущенных статусах", "Notifications about missed statuses"),
+  TR("Синхронизация данных в облаке", "Data synchronization in the cloud"),
 ];
 
 const testimonials = [
   {
-    name: 'Анна Петрова',
-    role: 'Когнитивно-поведенческий терапевт',
-    text: 'PsyWebNote полностью изменил мой рабочий процесс. Теперь я трачу меньше времени на администрирование и больше — на клиентов.',
-    avatar: 'АП',
+    name: TR("Анна Петрова", "Anna Petrova"),
+    role: TR("Когнитивно-поведенческий терапевт", "Cognitive Behavioral Therapist"),
+    text: TR("PsyWebNote полностью изменил мой рабочий процесс. Теперь я трачу меньше времени на администрирование и больше — на клиентов.", "PsyWebNote has completely changed my workflow. Now I spend less time on administration and more time on clients."),
+    avatar: TR("АП", "AP"),
     stars: 5,
   },
   {
-    name: 'Михаил Соколов',
-    role: 'Гештальт-терапевт',
-    text: 'AI-ассистент помогает замечать паттерны в работе с клиентами, которые я мог пропустить. Незаменимый инструмент.',
-    avatar: 'МС',
+    name: TR("Михаил Соколов", "Mikhail Sokolov"),
+    role: TR("Гештальт-терапевт", "Gestalt therapist"),
+    text: TR("AI-ассистент помогает замечать паттерны в работе с клиентами, которые я мог пропустить. Незаменимый инструмент.", "The AI ​​assistant helps me notice patterns in my work with clients that I might have missed. An indispensable tool."),
+    avatar: TR("МС", "MS"),
     stars: 5,
   },
   {
-    name: 'Елена Новикова',
-    role: 'Психоаналитик',
-    text: 'Наконец-то удобное приложение на русском языке специально для психологов. Журнал сессий просто отличный.',
-    avatar: 'ЕН',
+    name: TR("Елена Новикова", "Elena Novikova"),
+    role: TR("Психоаналитик", "Psychoanalyst"),
+    text: TR("Наконец-то удобное приложение на русском языке специально для психологов. Журнал сессий просто отличный.", "Finally, a convenient application in Russian specifically for psychologists. The session log is great."),
+    avatar: TR("ЕН", "EH"),
     stars: 5,
   },
 ];
 
 const faqs = [
   {
-    q: 'Безопасны ли мои данные?',
-    a: 'Да. Все данные хранятся в защищённой облачной базе Supabase с шифрованием. Row Level Security гарантирует, что данные каждого психолога доступны только ему.',
+    q: TR("Безопасны ли мои данные?", "Is my data safe?"),
+    a: TR("Да. Все данные хранятся в защищённой облачной базе Supabase с шифрованием. Row Level Security гарантирует, что данные каждого психолога доступны только ему.", "Yes. All data is stored in a secure cloud database Supabase with encryption. Row Level Security ensures that each psychologist's data is accessible only to that psychologist."),
   },
   {
-    q: 'Есть ли мобильное приложение?',
-    a: 'PsyWebNote — прогрессивное веб-приложение (PWA). Оно отлично работает в браузере на любом устройстве и может быть добавлено на экран телефона как приложение.',
+    q: TR("Есть ли мобильное приложение?", "Is there a mobile application?"),
+    a: TR("PsyWebNote — прогрессивное веб-приложение (PWA). Оно отлично работает в браузере на любом устройстве и может быть добавлено на экран телефона как приложение.", "PsyWebNote is a progressive web application (PWA). It works perfectly in the browser on any device and can be added to your phone screen as an application."),
   },
   {
-    q: 'Как работает AI-ассистент?',
-    a: 'AI-ассистент работает на базе Mistral AI. Он анализирует историю сессий клиента и помогает выявить динамику, риски и предложить техники работы.',
+    q: TR("Как работает AI-ассистент?", "How does the AI ​​assistant work?"),
+    a: TR("AI-ассистент работает на базе Mistral AI. Он анализирует историю сессий клиента и помогает выявить динамику, риски и предложить техники работы.", "The AI ​​assistant is powered by Mistral AI. It analyzes the client’s session history and helps identify dynamics, risks and suggest work techniques."),
   },
   {
-    q: 'Можно ли использовать без интернета?',
-    a: 'Базовый функционал работает и без интернета — данные кешируются. Синхронизация происходит при восстановлении соединения.',
+    q: TR("Можно ли использовать без интернета?", "Can it be used without the Internet?"),
+    a: TR("Базовый функционал работает и без интернета — данные кешируются. Синхронизация происходит при восстановлении соединения.", "The basic functionality works without the Internet - the data is cached. Synchronization occurs when the connection is restored."),
   },
   {
-    q: 'Сколько стоит?',
-    a: 'Сейчас PsyWebNote в открытом бета-доступе и полностью бесплатен. В будущем появятся платные тарифы с расширенными возможностями.',
+    q: TR("Сколько стоит?", "What is the price?"),
+    a: TR("Сейчас PsyWebNote в открытом бета-доступе и полностью бесплатен. В будущем появятся платные тарифы с расширенными возможностями.", "PsyWebNote is currently in open beta and completely free. In the future, paid plans with advanced features will appear."),
   },
 ];
 
@@ -129,11 +130,11 @@ export default function Landing() {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Возможности</a>
-            <a href="#benefits" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Преимущества</a>
-            <a href="#testimonials" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Отзывы</a>
+            <a href="#features" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">{TR("Возможности", "Possibilities")}</a>
+            <a href="#benefits" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">{TR("Преимущества", "Advantages")}</a>
+            <a href="#testimonials" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">{TR("Отзывы", "Reviews")}</a>
             <a href="#faq" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">FAQ</a>
-            <a href="#contacts" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Контакты</a>
+            <a href="#contacts" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">{TR("Контакты", "Contacts")}</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -141,14 +142,12 @@ export default function Landing() {
               onClick={() => navigate('/login')}
               className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2"
             >
-              Войти
-            </button>
+              {TR("\n              Войти\n            ", "Login")}</button>
             <button
               onClick={() => navigate('/register')}
               className="text-sm font-bold px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
             >
-              Начать бесплатно
-            </button>
+              {TR("\n              Начать бесплатно\n            ", "Start for free")}</button>
           </div>
         </div>
       </nav>
@@ -168,44 +167,37 @@ export default function Landing() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-full text-indigo-700 text-sm font-semibold mb-8">
             <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-            Бесплатный бета-доступ
-          </div>
+            {TR("\n            Бесплатный бета-доступ\n          ", "Free beta access")}</div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 mb-6 leading-tight">
-            Рабочее пространство
-            <br />
+            {TR("\n            Рабочее пространство\n            ", "Workspace")}<br />
             <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              современного психолога
-            </span>
+              {TR("\n              современного психолога\n            ", "modern psychologist")}</span>
           </h1>
 
           <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Управляйте клиентами, ведите журнал сессий, отслеживайте финансы
-            и получайте AI-аналитику — всё в одном месте.
-          </p>
+            {TR("\n            Управляйте клиентами, ведите журнал сессий, отслеживайте финансы\n            и получайте AI-аналитику — всё в одном месте.\n          ", "Manage clients, keep session logs, track finances\n            and get AI analytics - all in one place.")}</p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <button
               onClick={() => navigate('/register')}
               className="group flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl hover:shadow-xl hover:shadow-indigo-500/30 transition-all text-lg"
             >
-              Начать бесплатно
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {TR("\n              Начать бесплатно\n              ", "Start for free")}<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => navigate('/login')}
               className="flex items-center gap-2 px-8 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-2xl hover:border-indigo-300 hover:text-indigo-600 transition-all text-lg"
             >
-              Войти в аккаунт
-            </button>
+              {TR("\n              Войти в аккаунт\n            ", "Login to account")}</button>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-6 max-w-xl mx-auto">
             {[
-              { value: '100%', label: 'Безопасно' },
-              { value: 'AI', label: 'Аналитика' },
-              { value: '∞', label: 'Клиентов' },
+              { value: '100%', label: TR("Безопасно", "Safely") },
+              { value: 'AI', label: TR("Аналитика", "Analytics") },
+              { value: '∞', label: TR("Клиентов", "Clients") },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-3xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
@@ -233,10 +225,10 @@ export default function Landing() {
             <div className="p-6 min-h-64">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 {[
-                  { label: 'Клиентов', value: '12', color: 'bg-indigo-500' },
-                  { label: 'Заработано', value: '84 000 ₽', color: 'bg-purple-500' },
-                  { label: 'Часов', value: '18', color: 'bg-pink-500' },
-                  { label: 'Сессий', value: '21', color: 'bg-emerald-500' },
+                  { label: TR("Клиентов", "Clients"), value: '12', color: 'bg-indigo-500' },
+                  { label: TR("Заработано", "Earned"), value: '84 000 ₽', color: 'bg-purple-500' },
+                  { label: TR("Часов", "Hours"), value: '18', color: 'bg-pink-500' },
+                  { label: TR("Сессий", "Sessions"), value: '21', color: 'bg-emerald-500' },
                 ].map((card) => (
                   <div key={card.label} className="bg-white rounded-2xl p-4 shadow-sm">
                     <div className={`w-8 h-8 ${card.color} rounded-xl mb-2 opacity-90`} />
@@ -247,11 +239,11 @@ export default function Landing() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <div className="text-sm font-semibold text-gray-700 mb-3">Сегодня</div>
+                  <div className="text-sm font-semibold text-gray-700 mb-3">{TR("Сегодня", "Today")}</div>
                   {[
-                    { time: '10:00', name: 'Анна М.', type: 'онлайн', color: 'bg-blue-100 text-blue-700' },
-                    { time: '12:00', name: 'Сергей К.', type: 'очно', color: 'bg-green-100 text-green-700' },
-                    { time: '15:00', name: 'Мария Л.', type: 'онлайн', color: 'bg-purple-100 text-purple-700' },
+                    { time: '10:00', name: TR("Анна М.", "Anna M."), type: TR("онлайн", "online"), color: 'bg-blue-100 text-blue-700' },
+                    { time: '12:00', name: TR("Сергей К.", "Sergey K."), type: TR("очно", "in person"), color: 'bg-green-100 text-green-700' },
+                    { time: '15:00', name: TR("Мария Л.", "Maria L."), type: TR("онлайн", "online"), color: 'bg-purple-100 text-purple-700' },
                   ].map((s) => (
                     <div key={s.name} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                       <span className="text-xs font-mono text-gray-500 w-10">{s.time}</span>
@@ -264,12 +256,12 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <div className="text-sm font-semibold text-gray-700 mb-3">AI-аналитика</div>
+                  <div className="text-sm font-semibold text-gray-700 mb-3">{TR("AI-аналитика", "AI analytics")}</div>
                   <div className="space-y-2">
                     {[
-                      { label: 'Тревожность снижается', pct: 75, color: 'bg-green-400' },
-                      { label: 'Работа с самооценкой', pct: 55, color: 'bg-indigo-400' },
-                      { label: 'Прогресс целей', pct: 40, color: 'bg-purple-400' },
+                      { label: TR("Тревожность снижается", "Anxiety decreases"), pct: 75, color: 'bg-green-400' },
+                      { label: TR("Работа с самооценкой", "Working with self-esteem"), pct: 55, color: 'bg-indigo-400' },
+                      { label: TR("Прогресс целей", "Progress goals"), pct: 40, color: 'bg-purple-400' },
                     ].map((item) => (
                       <div key={item.label}>
                         <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -295,14 +287,11 @@ export default function Landing() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-purple-700 text-sm font-semibold mb-4">
               <Zap className="w-4 h-4" />
-              Возможности
-            </div>
+              {TR("\n              Возможности\n            ", "Possibilities")}</div>
             <h2 className="text-4xl lg:text-5xl font-black text-gray-900 mb-4">
-              Всё что нужно психологу
-            </h2>
+              {TR("\n              Всё что нужно психологу\n            ", "Everything a psychologist needs")}</h2>
             <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-              Инструменты, разработанные специально для практикующих психологов и психотерапевтов
-            </p>
+              {TR("\n              Инструменты, разработанные специально для практикующих психологов и психотерапевтов\n            ", "Tools designed specifically for practicing psychologists and psychotherapists")}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -329,17 +318,14 @@ export default function Landing() {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-sm font-semibold mb-6">
                 <CheckCircle className="w-4 h-4" />
-                Преимущества
-              </div>
+                {TR("\n                Преимущества\n              ", "Advantages")}</div>
               <h2 className="text-4xl font-black text-gray-900 mb-6">
-                Экономьте время на{' '}
+                {TR("\n                Экономьте время на", "Save time on")}{' '}
                 <span className="bg-gradient-to-r from-emerald-500 to-teal-600 bg-clip-text text-transparent">
-                  администрировании
-                </span>
+                  {TR("\n                  администрировании\n                ", "administration")}</span>
               </h2>
               <p className="text-gray-500 mb-8 text-lg leading-relaxed">
-                Меньше бумажной работы — больше времени для клиентов. PsyWebNote автоматизирует рутинные задачи.
-              </p>
+                {TR("\n                Меньше бумажной работы — больше времени для клиентов. PsyWebNote автоматизирует рутинные задачи.\n              ", "Less paperwork means more time for clients. PsyWebNote automates routine tasks.")}</p>
               <div className="space-y-3">
                 {benefits.map((b) => (
                   <div key={b} className="flex items-center gap-3">
@@ -355,8 +341,7 @@ export default function Landing() {
                 onClick={() => navigate('/register')}
                 className="mt-10 group flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl hover:shadow-xl hover:shadow-indigo-500/30 transition-all"
               >
-                Попробовать бесплатно
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                {TR("\n                Попробовать бесплатно\n                ", "Try for free")}<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
 
@@ -376,7 +361,7 @@ export default function Landing() {
                     </div>
                     <span className="text-white font-black text-xl">PsyWebNote</span>
                     <div className="mt-4 grid grid-cols-2 gap-2 w-full">
-                      {['Клиенты', 'Сессии', 'Календарь', 'Отчёты'].map(item => (
+                      {[TR("Клиенты", "Clients"), TR("Сессии", "Sessions"), TR("Календарь", "Calendar"), TR("Отчёты", "Reports")].map(item => (
                         <div key={item} className="bg-white/10 rounded-lg px-2 py-1.5 text-white/80 text-xs text-center">
                           {item}
                         </div>
@@ -421,28 +406,28 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
         <div className="max-w-4xl mx-auto relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-black text-white mb-4">Как это работает</h2>
-            <p className="text-indigo-200 text-lg">Начните за 5 минут</p>
+            <h2 className="text-4xl font-black text-white mb-4">{TR("Как это работает", "How does this work")}</h2>
+            <p className="text-indigo-200 text-lg">{TR("Начните за 5 минут", "Get started in 5 minutes")}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 step: '1',
-                title: 'Зарегистрируйтесь',
-                desc: 'Создайте аккаунт через email или Google. Заполните профиль — тип терапии, стоимость, расписание.',
+                title: TR("Зарегистрируйтесь", "Register"),
+                desc: TR("Создайте аккаунт через email или Google. Заполните профиль — тип терапии, стоимость, расписание.", "Create an account via email or Google. Fill out your profile - type of therapy, cost, schedule."),
                 icon: Users,
               },
               {
                 step: '2',
-                title: 'Добавьте клиентов',
-                desc: 'Внесите данные клиентов, установите расписание встреч. Система автоматически создаст календарь.',
+                title: TR("Добавьте клиентов", "Add clients"),
+                desc: TR("Внесите данные клиентов, установите расписание встреч. Система автоматически создаст календарь.", "Enter client data and set a meeting schedule. The system will automatically create a calendar."),
                 icon: Calendar,
               },
               {
                 step: '3',
-                title: 'Ведите записи',
-                desc: 'После каждой сессии фиксируйте заметки, отслеживайте прогресс и получайте AI-аналитику.',
+                title: TR("Ведите записи", "Keep records"),
+                desc: TR("После каждой сессии фиксируйте заметки, отслеживайте прогресс и получайте AI-аналитику.", "After each session, capture notes, track progress, and receive AI analytics."),
                 icon: Brain,
               },
             ].map((step, i) => (
@@ -462,8 +447,7 @@ export default function Landing() {
               onClick={() => navigate('/register')}
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-600 font-bold rounded-2xl hover:shadow-xl transition-all text-lg"
             >
-              Начать бесплатно
-              <ArrowRight className="w-5 h-5" />
+              {TR("\n              Начать бесплатно\n              ", "Start for free")}<ArrowRight className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -475,11 +459,9 @@ export default function Landing() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-full text-yellow-700 text-sm font-semibold mb-4">
               <Star className="w-4 h-4" />
-              Отзывы
-            </div>
+              {TR("\n              Отзывы\n            ", "Reviews")}</div>
             <h2 className="text-4xl font-black text-gray-900 mb-4">
-              Что говорят психологи
-            </h2>
+              {TR("\n              Что говорят психологи\n            ", "What psychologists say")}</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -512,14 +494,11 @@ export default function Landing() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-full text-indigo-700 text-sm font-semibold mb-4">
               <Lock className="w-4 h-4" />
-              Безопасность
-            </div>
+              {TR("\n              Безопасность\n            ", "Safety")}</div>
             <h2 className="text-4xl font-black text-gray-900 mb-4">
-              Данные под надёжной защитой
-            </h2>
+              {TR("\n              Данные под надёжной защитой\n            ", "Data under reliable protection")}</h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Мы понимаем важность конфиденциальности в терапевтических отношениях.
-            </p>
+              {TR("\n              Мы понимаем важность конфиденциальности в терапевтических отношениях.\n            ", "We understand the importance of confidentiality in the therapeutic relationship.")}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -527,25 +506,25 @@ export default function Landing() {
               {
                 icon: Shield,
                 title: 'Row Level Security',
-                desc: 'Данные каждого психолога изолированы. Никто кроме вас не имеет доступа к вашим записям.',
+                desc: TR("Данные каждого психолога изолированы. Никто кроме вас не имеет доступа к вашим записям.", "The data of each psychologist is isolated. No one except you has access to your records."),
                 color: 'text-indigo-600 bg-indigo-50',
               },
               {
                 icon: Lock,
-                title: 'Шифрование',
-                desc: 'Все данные передаются по HTTPS. Пароли хранятся в зашифрованном виде (bcrypt).',
+                title: TR("Шифрование", "Encryption"),
+                desc: TR("Все данные передаются по HTTPS. Пароли хранятся в зашифрованном виде (bcrypt).", "All data is transmitted over HTTPS. Passwords are stored in encrypted form (bcrypt)."),
                 color: 'text-emerald-600 bg-emerald-50',
               },
               {
                 icon: Clock,
                 title: 'JWT + Auto-refresh',
-                desc: 'Токены авторизации автоматически обновляются. Безопасный выход на всех устройствах.',
+                desc: TR("Токены авторизации автоматически обновляются. Безопасный выход на всех устройствах.", "Authorization tokens are automatically renewed. Secure logout on all devices."),
                 color: 'text-purple-600 bg-purple-50',
               },
               {
                 icon: MessageSquare,
-                title: 'AI без хранения',
-                desc: 'Запросы к AI-ассистенту не сохраняются на серверах Mistral. Ваши заметки только у вас.',
+                title: TR("AI без хранения", "AI without storage"),
+                desc: TR("Запросы к AI-ассистенту не сохраняются на серверах Mistral. Ваши заметки только у вас.", "Requests to the AI ​​assistant are not saved on Mistral servers. Your notes are yours alone."),
                 color: 'text-pink-600 bg-pink-50',
               },
             ].map((item) => (
@@ -567,7 +546,7 @@ export default function Landing() {
       <section id="faq" className="py-24 px-4 bg-gray-50">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-black text-gray-900 mb-4">Частые вопросы</h2>
+            <h2 className="text-4xl font-black text-gray-900 mb-4">{TR("Частые вопросы", "Frequently asked questions")}</h2>
           </div>
 
           <div className="space-y-3">
@@ -600,30 +579,24 @@ export default function Landing() {
             <span className="text-white font-black text-3xl">Ψ</span>
           </div>
           <h2 className="text-4xl lg:text-5xl font-black text-gray-900 mb-6">
-            Начните работать умнее
-            <br />
+            {TR("\n            Начните работать умнее\n            ", "Start working smarter")}<br />
             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              уже сегодня
-            </span>
+              {TR("\n              уже сегодня\n            ", "today")}</span>
           </h2>
           <p className="text-gray-500 text-lg mb-10">
-            Присоединяйтесь к психологам, которые уже используют PsyWebNote.
-            Бесплатно. Без кредитной карты.
-          </p>
+            {TR("\n            Присоединяйтесь к психологам, которые уже используют PsyWebNote.\n            Бесплатно. Без кредитной карты.\n          ", "Join psychologists who are already using PsyWebNote.\n            For free. No credit card.")}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => navigate('/register')}
               className="group flex items-center justify-center gap-2 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl hover:shadow-xl hover:shadow-indigo-500/30 transition-all text-lg"
             >
-              Зарегистрироваться бесплатно
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {TR("\n              Зарегистрироваться бесплатно\n              ", "Register for free")}<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => navigate('/login')}
               className="flex items-center justify-center gap-2 px-10 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-2xl hover:border-indigo-300 hover:text-indigo-600 transition-all text-lg"
             >
-              Уже есть аккаунт
-            </button>
+              {TR("\n              Уже есть аккаунт\n            ", "Already have an account")}</button>
           </div>
         </div>
       </section>
@@ -634,15 +607,12 @@ export default function Landing() {
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-full text-white/80 text-sm font-semibold mb-6">
             <MessageSquare className="w-4 h-4" />
-            Связаться с разработчиком
-          </div>
+            {TR("\n            Связаться с разработчиком\n          ", "Contact the developer")}</div>
           <h2 className="text-4xl font-black text-white mb-4">
-            Есть вопросы или идеи?
-          </h2>
+            {TR("\n            Есть вопросы или идеи?\n          ", "Have questions or ideas?")}</h2>
           <p className="text-indigo-300 text-lg mb-10">
-            Пишите напрямую — отвечу на вопросы о приложении,<br className="hidden sm:block" />
-            приму предложения по улучшению
-          </p>
+            {TR("\n            Пишите напрямую — отвечу на вопросы о приложении,", "Write directly - I will answer questions about the application,")}<br className="hidden sm:block" />
+            {TR("\n            приму предложения по улучшению\n          ", "I will accept suggestions for improvement")}</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Telegram */}
@@ -694,7 +664,7 @@ export default function Landing() {
                 </svg>
               </div>
               <div>
-                <p className="font-bold text-white">ВКонтакте</p>
+                <p className="font-bold text-white">{TR("ВКонтакте", "VKontakte")}</p>
                 <p className="text-indigo-300 text-sm">@oldnewborispro</p>
               </div>
             </a>
@@ -716,11 +686,11 @@ export default function Landing() {
             </div>
 
             <div className="flex items-center gap-6 text-sm text-gray-500">
-              <button onClick={() => navigate('/login')} className="hover:text-indigo-600 transition-colors">Войти</button>
-              <button onClick={() => navigate('/register')} className="hover:text-indigo-600 transition-colors">Регистрация</button>
-              <a href="#features" className="hover:text-indigo-600 transition-colors">Возможности</a>
+              <button onClick={() => navigate('/login')} className="hover:text-indigo-600 transition-colors">{TR("Войти", "Login")}</button>
+              <button onClick={() => navigate('/register')} className="hover:text-indigo-600 transition-colors">{TR("Регистрация", "Registration")}</button>
+              <a href="#features" className="hover:text-indigo-600 transition-colors">{TR("Возможности", "Possibilities")}</a>
               <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
-              <a href="#contacts" className="hover:text-indigo-600 transition-colors">Контакты</a>
+              <a href="#contacts" className="hover:text-indigo-600 transition-colors">{TR("Контакты", "Contacts")}</a>
             </div>
 
             <div className="flex items-center gap-4">

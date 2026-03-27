@@ -1,7 +1,9 @@
+import { TR } from '../utils/tr';
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Loader2, Bot, User as UserIcon, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { sendToMistral, ChatMessage, getGeneralPrompt } from '../services/mistral';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import MarkdownMessage from './MarkdownMessage';
 
 interface Message {
@@ -12,14 +14,15 @@ interface Message {
 }
 
 const QUICK_QUESTIONS = [
-  'Что такое КПТ и как её применять?',
-  'Техники работы с тревогой',
-  'Как выстроить терапевтический альянс?',
-  'Признаки эмоционального выгорания психолога',
+  TR("Что такое КПТ и как её применять?", "What is CBT and how to use it?"),
+  TR("Техники работы с тревогой", "Techniques for dealing with anxiety"),
+  TR("Как выстроить терапевтический альянс?", "How to build a therapeutic alliance?"),
+  TR("Признаки эмоционального выгорания психолога", "Signs of emotional burnout in a psychologist"),
 ];
 
 export default function AIFloatingChat() {
   const { user } = useApp();
+  const { language } = useLanguage();
   const [isOpen, setIsOpen]   = useState(false);
   const [isMin, setIsMin]     = useState(false);
   const [isMax, setIsMax]     = useState(false);
@@ -29,6 +32,7 @@ export default function AIFloatingChat() {
   const endRef   = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const timeLocale = language === 'ru' ? 'ru-RU' : 'en-US';
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 640);
@@ -72,7 +76,7 @@ export default function AIFloatingChat() {
     } catch {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(), role: 'assistant',
-        content: '⚠️ Ошибка соединения. Попробуйте снова.', ts: new Date(),
+        content: TR("⚠️ Ошибка соединения. Попробуйте снова.", "⚠️ Connection error. Try again."), ts: new Date(),
       }]);
     } finally {
       setLoading(false);
@@ -114,7 +118,7 @@ export default function AIFloatingChat() {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 w-14 h-14 bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-full shadow-2xl shadow-violet-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-          title="AI-ассистент по психологии"
+          title={TR("AI-ассистент по психологии", "AI assistant in psychology")}
         >
           <Sparkles className="w-6 h-6" />
           <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
@@ -133,10 +137,10 @@ export default function AIFloatingChat() {
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white text-sm">AI-ассистент</h3>
+              <h3 className="font-bold text-white text-sm">{TR("AI-ассистент", "AI assistant")}</h3>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-violet-200 text-xs">по психологии · онлайн</span>
+                <span className="text-violet-200 text-xs">{TR("по психологии · онлайн", "in psychology online")}</span>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -144,7 +148,7 @@ export default function AIFloatingChat() {
               <button
                 onClick={() => setIsMin(!isMin)}
                 className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-colors"
-                title={isMin ? 'Развернуть' : 'Свернуть'}
+                title={isMin ? TR("Развернуть", "Expand") : TR("Свернуть", "Collapse")}
               >
                 <ChevronDown className={`w-4 h-4 transition-transform ${isMin ? 'rotate-180' : ''}`} />
               </button>
@@ -153,7 +157,7 @@ export default function AIFloatingChat() {
                 <button
                   onClick={() => setIsMax(!isMax)}
                   className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-colors"
-                  title={isMax ? 'Обычный размер' : 'На весь экран'}
+                  title={isMax ? TR("Обычный размер", "Regular size") : TR("На весь экран", "Full screen")}
                 >
                   {isMax ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
@@ -179,18 +183,20 @@ export default function AIFloatingChat() {
                       <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2.5 shadow-sm border border-gray-100 max-w-[85%]">
                         <MarkdownMessage
                           content={user?.name
-                            ? `Привет, **${user.name.split(' ')[0]}**! 👋\n\nЯ ваш AI-ассистент по психологии. Могу помочь с:\n- Терапевтическими техниками\n- Анализом подходов\n- Профессиональными вопросами\n\nЧем могу помочь?`
-                            : `Привет! 👋\n\nЯ AI-ассистент для психологов. Готов помочь с вопросами по терапевтическим техникам, методам работы и психологии в целом.`
+                            ? (language === 'ru'
+                              ? `Привет, **${user.name.split(' ')[0]}**! 👋\n\nЯ ваш AI-ассистент по психологии. Могу помочь с:\n- Терапевтическими техниками\n- Анализом подходов\n- Профессиональными вопросами\n\nЧем могу помочь?`
+                              : `Hi, **${user.name.split(' ')[0]}**! 👋\n\nI am your psychology AI assistant. I can help with:\n- Therapeutic techniques\n- Approach analysis\n- Professional questions\n\nHow can I help you today?`)
+                            : TR("Привет! 👋\n\nЯ AI-ассистент для психологов. Готов помочь с вопросами по терапевтическим техникам, методам работы и психологии в целом.", "Hello! 👋\n\nI am an AI assistant for psychologists. Ready to help with questions on therapeutic techniques, working methods and psychology in general.")
                           }
                         />
                         <div className="text-[10px] text-gray-400 mt-1">
-                          {new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date().toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
                     </div>
                     {/* Quick questions */}
                     <div className="ml-9">
-                      <p className="text-xs text-gray-400 mb-2">Быстрые вопросы:</p>
+                      <p className="text-xs text-gray-400 mb-2">{TR("Быстрые вопросы:", "Quick questions:")}</p>
                       <div className="space-y-1.5">
                         {QUICK_QUESTIONS.map((q, i) => (
                           <button key={i} onClick={() => send(q)}
@@ -219,7 +225,7 @@ export default function AIFloatingChat() {
                     }`}>
                       <MarkdownMessage content={msg.content} isUser={msg.role === 'user'} />
                       <div className={`text-[10px] mt-1.5 ${msg.role === 'user' ? 'text-indigo-200 text-right' : 'text-gray-400'}`}>
-                        {msg.ts.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                        {msg.ts.toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                   </div>
@@ -250,7 +256,7 @@ export default function AIFloatingChat() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKey}
-                    placeholder="Спросите о психологии..."
+                    placeholder={TR("Спросите о психологии...", "Ask about psychology...")}
                     rows={1}
                     className="flex-1 resize-none px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     style={{ minHeight: '42px', maxHeight: '100px' }}
@@ -269,8 +275,7 @@ export default function AIFloatingChat() {
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1.5 text-center">
-                  Enter — отправить · Shift+Enter — новая строка
-                </p>
+                  {TR("\n                  Enter — отправить · Shift+Enter — новая строка\n                ", "Enter - send Shift+Enter - new line")}</p>
               </div>
             </>
           )}

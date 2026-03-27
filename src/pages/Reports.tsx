@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useMemo, useState } from 'react';
 import { 
   TrendingUp, 
@@ -245,9 +246,9 @@ export default function Reports() {
     const noShow = allPeriodSessions.filter(s => s.status === 'no-show').length;
     
     return [
-      { name: 'Проведено', value: completed, color: '#10B981' },
-      { name: 'Отменено', value: cancelled, color: '#EF4444' },
-      { name: 'Неявка', value: noShow, color: '#F59E0B' },
+      { name: TR("Проведено", "Conducted"), value: completed, color: '#10B981' },
+      { name: TR("Отменено", "Canceled"), value: cancelled, color: '#EF4444' },
+      { name: TR("Неявка", "No-show"), value: noShow, color: '#F59E0B' },
     ].filter(d => d.value > 0);
   }, [sessions, periodDates]);
 
@@ -263,11 +264,11 @@ export default function Reports() {
   const COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#14B8A6'];
 
   const periodLabels: Record<Period, string> = {
-    week: 'Неделя',
-    month: 'Месяц',
-    '3months': '3 месяца',
-    year: 'Год',
-    all: 'Все время'
+    week: TR("Неделя", "Week"),
+    month: TR("Месяц", "Month"),
+    '3months': TR("3 месяца", "3 months"),
+    year: TR("Год", "Year"),
+    all: TR("Все время", "All the time")
   };
 
   return (
@@ -276,8 +277,8 @@ export default function Reports() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Отчёты</h1>
-            <p className="text-gray-500">Аналитика и статистика</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{TR("Отчёты", "Reports")}</h1>
+            <p className="text-gray-500">{TR("Аналитика и статистика", "Analytics and statistics")}</p>
           </div>
           
           {/* Period Selector */}
@@ -300,7 +301,7 @@ export default function Reports() {
           <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-green-600 font-medium">Доход</p>
+                <p className="text-sm text-green-600 font-medium">{TR("Доход", "Income")}</p>
                 <p className="text-2xl font-bold text-green-700 mt-1">
                   {metrics.totalRevenue.toLocaleString()} {user?.currency || '₽'}
                 </p>
@@ -312,15 +313,14 @@ export default function Reports() {
             {metrics.revenueChange !== 0 && (
               <div className={`flex items-center gap-1 mt-3 text-sm ${metrics.revenueChange > 0 ? 'text-green-600' : 'text-red-500'}`}>
                 {metrics.revenueChange > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                {Math.abs(metrics.revenueChange).toFixed(1)}% к пред. периоду
-              </div>
+                {Math.abs(metrics.revenueChange).toFixed(1)}{TR("% к пред. периоду\n              ", "% to previous period")}</div>
             )}
           </div>
 
           <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-blue-600 font-medium">Сессий проведено</p>
+                <p className="text-sm text-blue-600 font-medium">{TR("Сессий проведено", "Sessions held")}</p>
                 <p className="text-2xl font-bold text-blue-700 mt-1">{metrics.totalSessions}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
@@ -330,15 +330,14 @@ export default function Reports() {
             {metrics.sessionsChange !== 0 && (
               <div className={`flex items-center gap-1 mt-3 text-sm ${metrics.sessionsChange > 0 ? 'text-green-600' : 'text-red-500'}`}>
                 {metrics.sessionsChange > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                {Math.abs(metrics.sessionsChange).toFixed(1)}% к пред. периоду
-              </div>
+                {Math.abs(metrics.sessionsChange).toFixed(1)}{TR("% к пред. периоду\n              ", "% to previous period")}</div>
             )}
           </div>
 
           <div className="card bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-100">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-purple-600 font-medium">Часов работы</p>
+                <p className="text-sm text-purple-600 font-medium">{TR("Часов работы", "Opening hours")}</p>
                 <p className="text-2xl font-bold text-purple-700 mt-1">{metrics.totalHours.toFixed(1)}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
@@ -346,14 +345,14 @@ export default function Reports() {
               </div>
             </div>
             <p className="text-sm text-purple-600 mt-3">
-              Средняя стоимость: {metrics.avgSessionPrice.toLocaleString()} {user?.currency || '₽'}
+              {TR("\n              Средняя стоимость: ", "Average cost:")}{metrics.avgSessionPrice.toLocaleString()} {user?.currency || '₽'}
             </p>
           </div>
 
           <div className="card bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-amber-600 font-medium">Активных клиентов</p>
+                <p className="text-sm text-amber-600 font-medium">{TR("Активных клиентов", "Active clients")}</p>
                 <p className="text-2xl font-bold text-amber-700 mt-1">{metrics.uniqueClients}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
@@ -361,7 +360,7 @@ export default function Reports() {
               </div>
             </div>
             <p className="text-sm text-amber-600 mt-3">
-              Среднее настроение: {metrics.avgMood.toFixed(1)}/10
+              {TR("\n              Среднее настроение: ", "Average mood:")}{metrics.avgMood.toFixed(1)}/10
             </p>
           </div>
         </div>
@@ -372,7 +371,7 @@ export default function Reports() {
           <div className="card">
             <div className="flex items-center gap-2 mb-6">
               <BarChart3 className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">Динамика дохода</h3>
+              <h3 className="font-semibold text-gray-900">{TR("Динамика дохода", "Income dynamics")}</h3>
             </div>
             {revenueChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -388,15 +387,14 @@ export default function Reports() {
                   <YAxis tick={{ fontSize: 12 }} stroke="#9CA3AF" />
                   <Tooltip 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                    formatter={(value) => [`${Number(value || 0).toLocaleString()} ${user?.currency || '₽'}`, 'Доход']}
+                    formatter={(value) => [`${Number(value || 0).toLocaleString()} ${user?.currency || '₽'}`, TR("Доход", "Income")]}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={2} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-gray-500">
-                Нет данных за выбранный период
-              </div>
+                {TR("\n                Нет данных за выбранный период\n              ", "There is no data for the selected period")}</div>
             )}
           </div>
 
@@ -404,7 +402,7 @@ export default function Reports() {
           <div className="card">
             <div className="flex items-center gap-2 mb-6">
               <Users className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">Сессии по клиентам</h3>
+              <h3 className="font-semibold text-gray-900">{TR("Сессии по клиентам", "Sessions by client")}</h3>
             </div>
             {clientSessionsData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -414,15 +412,14 @@ export default function Reports() {
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} stroke="#9CA3AF" width={100} />
                   <Tooltip 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                    formatter={(value, name) => [Number(value || 0), name === 'sessions' ? 'Сессий' : 'Доход']}
+                    formatter={(value, name) => [Number(value || 0), name === 'sessions' ? TR("Сессий", "Sessions") : TR("Доход", "Income")]}
                   />
                   <Bar dataKey="sessions" fill="#6366F1" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-gray-500">
-                Нет данных за выбранный период
-              </div>
+                {TR("\n                Нет данных за выбранный период\n              ", "There is no data for the selected period")}</div>
             )}
           </div>
         </div>
@@ -433,7 +430,7 @@ export default function Reports() {
           <div className="card">
             <div className="flex items-center gap-2 mb-6">
               <PieChartIcon className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">Статусы сессий</h3>
+              <h3 className="font-semibold text-gray-900">{TR("Статусы сессий", "Session statuses")}</h3>
             </div>
             {sessionStatusData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
@@ -459,8 +456,7 @@ export default function Reports() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-gray-500">
-                Нет данных
-              </div>
+                {TR("\n                Нет данных\n              ", "No data")}</div>
             )}
           </div>
 
@@ -468,7 +464,7 @@ export default function Reports() {
           <div className="card">
             <div className="flex items-center gap-2 mb-6">
               <BarChart3 className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">Популярные темы</h3>
+              <h3 className="font-semibold text-gray-900">{TR("Популярные темы", "Popular Topics")}</h3>
             </div>
             {topicsData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
@@ -493,8 +489,7 @@ export default function Reports() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-gray-500">
-                Нет данных
-              </div>
+                {TR("\n                Нет данных\n              ", "No data")}</div>
             )}
           </div>
 
@@ -502,12 +497,12 @@ export default function Reports() {
           <div className="card">
             <div className="flex items-center gap-2 mb-6">
               <DollarSign className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">Оплата</h3>
+              <h3 className="font-semibold text-gray-900">{TR("Оплата", "Payment")}</h3>
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
                 <div>
-                  <p className="text-sm text-green-600">Оплачено</p>
+                  <p className="text-sm text-green-600">{TR("Оплачено", "Paid")}</p>
                   <p className="text-2xl font-bold text-green-700">{paymentStatusData.paid}</p>
                 </div>
                 <div className="text-green-600 text-3xl font-bold">
@@ -518,11 +513,11 @@ export default function Reports() {
               {paymentStatusData.unpaid > 0 && (
                 <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl">
                   <div>
-                    <p className="text-sm text-red-600">Не оплачено</p>
+                    <p className="text-sm text-red-600">{TR("Не оплачено", "Not paid")}</p>
                     <p className="text-2xl font-bold text-red-700">{paymentStatusData.unpaid}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-red-600">Задолженность</p>
+                    <p className="text-sm text-red-600">{TR("Задолженность", "Debt")}</p>
                     <p className="text-lg font-bold text-red-700">
                       {paymentStatusData.unpaidAmount.toLocaleString()} {user?.currency || '₽'}
                     </p>
@@ -537,7 +532,7 @@ export default function Reports() {
         <div className="card mb-6">
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="w-5 h-5 text-indigo-600" />
-            <h3 className="font-semibold text-gray-900">Динамика настроения клиентов</h3>
+            <h3 className="font-semibold text-gray-900">{TR("Динамика настроения клиентов", "Dynamics of customer sentiment")}</h3>
           </div>
           {moodChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -547,7 +542,7 @@ export default function Reports() {
                 <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} stroke="#9CA3AF" />
                 <Tooltip 
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                  formatter={(value) => [Number(value || 0).toFixed(1), 'Настроение']}
+                  formatter={(value) => [Number(value || 0).toFixed(1), TR("Настроение", "Mood")]}
                 />
                 <Line 
                   type="monotone" 
@@ -561,8 +556,7 @@ export default function Reports() {
             </ResponsiveContainer>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-gray-500">
-              Нет данных о настроении за выбранный период
-            </div>
+              {TR("\n              Нет данных о настроении за выбранный период\n            ", "No sentiment data for the selected period")}</div>
           )}
         </div>
 
@@ -570,7 +564,7 @@ export default function Reports() {
         <div className="card">
           <div className="flex items-center gap-2 mb-6">
             <Calendar className="w-5 h-5 text-indigo-600" />
-            <h3 className="font-semibold text-gray-900">Количество сессий</h3>
+            <h3 className="font-semibold text-gray-900">{TR("Количество сессий", "Number of sessions")}</h3>
           </div>
           {revenueChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -580,15 +574,14 @@ export default function Reports() {
                 <YAxis tick={{ fontSize: 12 }} stroke="#9CA3AF" />
                 <Tooltip 
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                  formatter={(value) => [Number(value || 0), 'Сессий']}
+                  formatter={(value) => [Number(value || 0), TR("Сессий", "Sessions")]}
                 />
                 <Bar dataKey="sessions" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-gray-500">
-              Нет данных за выбранный период
-            </div>
+              {TR("\n              Нет данных за выбранный период\n            ", "There is no data for the selected period")}</div>
           )}
         </div>
       </div>
