@@ -16,6 +16,8 @@ export interface User {
   };
   workingDays: number[];
   onboardingComplete?: boolean;
+  /** Token used for webcal:// calendar subscription (read-only, stored in profiles.cal_token) */
+  calToken?: string;
 }
 
 export interface Package {
