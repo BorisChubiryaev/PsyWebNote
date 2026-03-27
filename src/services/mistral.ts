@@ -1,9 +1,9 @@
+import { TR } from '../utils/tr';
 /**
  * Клиент для Mistral AI
  * В production: запросы идут через /api/mistral (Vercel Function) — API ключ на сервере
  * В dev: если задан VITE_MISTRAL_API_KEY — напрямую (для локальной разработки)
  */
-import { TR } from '../utils/tr';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
