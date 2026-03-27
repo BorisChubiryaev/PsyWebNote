@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useState, useEffect } from 'react';
 import { Save, Plus, Trash2, Camera } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -81,25 +82,25 @@ export default function Profile() {
     }
   };
 
-  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  const dayNames = [TR("Вс", "Sun"), TR("Пн", "Mon"), TR("Вт", "W"), TR("Ср", "Wed"), TR("Чт", "Thu"), TR("Пт", "Fri"), TR("Сб", "Sat")];
   const therapyTypes = [
-    'Когнитивно-поведенческая терапия (КПТ)',
-    'Психоанализ',
-    'Гештальт-терапия',
-    'Арт-терапия',
-    'Семейная терапия',
-    'Телесно-ориентированная терапия',
+    TR("Когнитивно-поведенческая терапия (КПТ)", "Cognitive Behavioral Therapy (CBT)"),
+    TR("Психоанализ", "Psychoanalysis"),
+    TR("Гештальт-терапия", "Gestalt therapy"),
+    TR("Арт-терапия", "Art therapy"),
+    TR("Семейная терапия", "Family therapy"),
+    TR("Телесно-ориентированная терапия", "Body-oriented therapy"),
     'EMDR',
-    'Гипнотерапия',
-    'Экзистенциальная терапия',
-    'Интегративный подход',
+    TR("Гипнотерапия", "Hypnotherapy"),
+    TR("Экзистенциальная терапия", "Existential therapy"),
+    TR("Интегративный подход", "Integrative approach"),
   ];
 
   if (!user) {
     return (
       <Layout>
         <div className="text-center py-16">
-          <h2 className="text-xl font-bold text-gray-900">Загрузка...</h2>
+          <h2 className="text-xl font-bold text-gray-900">{TR("Загрузка...", "Loading...")}</h2>
         </div>
       </Layout>
     );
@@ -109,20 +110,19 @@ export default function Profile() {
     <Layout>
       <div className="max-w-3xl mx-auto animate-fadeIn">
         <div className="mb-6">
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Профиль</h1>
-          <p className="text-gray-500">Настройки вашего аккаунта</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{TR("Профиль", "Profile")}</h1>
+          <p className="text-gray-500">{TR("Настройки вашего аккаунта", "Your account settings")}</p>
         </div>
 
         {saved && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 animate-fadeIn">
-            ✓ Изменения сохранены
-          </div>
+            {TR("\n            ✓ Изменения сохранены\n          ", "✓ Changes saved")}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Avatar & Basic Info */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Личная информация</h2>
+            <h2 className="font-semibold text-gray-900 mb-4">{TR("Личная информация", "Personal information")}</h2>
             
             <div className="flex flex-col sm:flex-row gap-6 mb-6">
               <div className="relative">
@@ -130,7 +130,7 @@ export default function Profile() {
                   <img src={formData.avatar} alt="" className="w-24 h-24 rounded-2xl object-cover" />
                 ) : (
                   <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold">
-                    {formData.name.charAt(0) || 'П'}
+                    {formData.name.charAt(0) || TR("П", "P")}
                   </div>
                 )}
                 <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-indigo-600 transition-colors">
@@ -155,13 +155,13 @@ export default function Profile() {
 
               <div className="flex-1 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Имя</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Имя", "Name")}</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input-field"
-                    placeholder="Анна Иванова"
+                    placeholder={TR("Анна Иванова", "Anna Ivanova")}
                   />
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -176,7 +176,7 @@ export default function Profile() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Телефон", "Telephone")}</label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -190,29 +190,29 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">О себе</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{TR("О себе", "About me")}</label>
               <textarea
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 className="input-field min-h-[100px] resize-y"
-                placeholder="Расскажите о себе, своем опыте и подходе..."
+                placeholder={TR("Расскажите о себе, своем опыте и подходе...", "Tell us about yourself, your experience and approach...")}
               />
             </div>
           </div>
 
           {/* Therapy Type & Rate */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Профессиональная информация</h2>
+            <h2 className="font-semibold text-gray-900 mb-4">{TR("Профессиональная информация", "Professional information")}</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Тип терапии</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Тип терапии", "Type of therapy")}</label>
                 <select
                   value={formData.therapyType}
                   onChange={(e) => setFormData({ ...formData, therapyType: e.target.value })}
                   className="input-field"
                 >
-                  <option value="">Выберите тип</option>
+                  <option value="">{TR("Выберите тип", "Select type")}</option>
                   {therapyTypes.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
@@ -221,7 +221,7 @@ export default function Profile() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Стоимость сессии</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Стоимость сессии", "Session cost")}</label>
                   <input
                     type="number"
                     value={formData.hourlyRate}
@@ -231,17 +231,17 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Валюта</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Валюта", "Currency")}</label>
                   <select
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                     className="input-field"
                   >
-                    <option value="₽">₽ (Рубль)</option>
-                    <option value="$">$ (Доллар)</option>
-                    <option value="€">€ (Евро)</option>
-                    <option value="₸">₸ (Тенге)</option>
-                    <option value="₴">₴ (Гривна)</option>
+                    <option value="₽">{TR("₽ (Рубль)", "₽ (Ruble)")}</option>
+                    <option value="$">{TR("$ (Доллар)", "$ (Dollar)")}</option>
+                    <option value="€">{TR("€ (Евро)", "€ (Euro)")}</option>
+                    <option value="₸">{TR("₸ (Тенге)", "₸ (Tenge)")}</option>
+                    <option value="₴">{TR("₴ (Гривна)", "₴ (Hryvnia)")}</option>
                   </select>
                 </div>
               </div>
@@ -250,11 +250,11 @@ export default function Profile() {
 
           {/* Working Hours */}
           <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">Рабочее время</h2>
+            <h2 className="font-semibold text-gray-900 mb-4">{TR("Рабочее время", "Working hours")}</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Рабочие дни</label>
+                <label className="block text-sm font-medium text-gray-700 mb-3">{TR("Рабочие дни", "Working days")}</label>
                 <div className="flex flex-wrap gap-2">
                   {dayNames.map((name, i) => (
                     <button
@@ -276,7 +276,7 @@ export default function Profile() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Начало работы</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Начало работы", "Getting started")}</label>
                   <input
                     type="time"
                     value={formData.workingHours.start}
@@ -288,7 +288,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Конец работы</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{TR("Конец работы", "End of work")}</label>
                   <input
                     type="time"
                     value={formData.workingHours.end}
@@ -306,11 +306,10 @@ export default function Profile() {
           {/* Packages */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Пакеты услуг</h2>
+              <h2 className="font-semibold text-gray-900">{TR("Пакеты услуг", "Service packages")}</h2>
               <button type="button" onClick={addPackage} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
                 <Plus className="w-4 h-4" />
-                Добавить
-              </button>
+                {TR("\n                Добавить\n              ", "Add")}</button>
             </div>
 
             {packages.length > 0 ? (
@@ -323,7 +322,7 @@ export default function Profile() {
                         value={pkg.name}
                         onChange={(e) => updatePackage(pkg.id, { name: e.target.value })}
                         className="input-field flex-1 mr-4"
-                        placeholder="Название пакета"
+                        placeholder={TR("Название пакета", "Package name")}
                       />
                       <button
                         type="button"
@@ -336,7 +335,7 @@ export default function Profile() {
                     
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Сессий</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{TR("Сессий", "Sessions")}</label>
                         <input
                           type="number"
                           value={pkg.sessions}
@@ -346,7 +345,7 @@ export default function Profile() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Цена</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{TR("Цена", "Price")}</label>
                         <input
                           type="number"
                           value={pkg.price}
@@ -356,7 +355,7 @@ export default function Profile() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Скидка %</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{TR("Скидка %", "Discount %")}</label>
                         <input
                           type="number"
                           value={pkg.discount}
@@ -371,15 +370,14 @@ export default function Profile() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Пакеты не добавлены</p>
+              <p className="text-gray-500 text-sm">{TR("Пакеты не добавлены", "No packages added")}</p>
             )}
           </div>
 
           {/* Submit */}
           <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
             <Save className="w-5 h-5" />
-            Сохранить изменения
-          </button>
+            {TR("\n            Сохранить изменения\n          ", "Save changes")}</button>
         </form>
       </div>
     </Layout>
