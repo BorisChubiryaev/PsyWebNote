@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 /**
  * VK OAuth 2.1 Callback
  *
@@ -19,7 +20,7 @@ export default function VKCallback() {
   const [params]            = useSearchParams();
   const { login, register } = useApp();
   const [error, setError]   = useState('');
-  const [step, setStep]     = useState('Проверяем данные...');
+  const [step, setStep]     = useState(TR("Проверяем данные...", "Checking the data..."));
   const called              = useRef(false);
 
   useEffect(() => {
@@ -34,13 +35,13 @@ export default function VKCallback() {
     const errParam = params.get('error');
     const errDesc  = params.get('error_description');
     if (errParam) {
-      setError(errDesc ? decodeURIComponent(errDesc) : 'Вход через ВКонтакте отменён');
+      setError(errDesc ? decodeURIComponent(errDesc) : TR("Вход через ВКонтакте отменён", "Login via VKontakte canceled"));
       return;
     }
 
     const code = params.get('code');
     if (!code) {
-      setError('Код авторизации не получен от VK');
+      setError(TR("Код авторизации не получен от VK", "Authorization code not received from VK"));
       return;
     }
 
@@ -48,7 +49,7 @@ export default function VKCallback() {
     const savedState = sessionStorage.getItem('vk_state');
     const state      = params.get('state');
     if (state !== savedState) {
-      setError('Ошибка безопасности: неверный state. Попробуйте снова.');
+      setError(TR("Ошибка безопасности: неверный state. Попробуйте снова.", "Security error: invalid state. Try again."));
       return;
     }
 
@@ -59,11 +60,11 @@ export default function VKCallback() {
                       || '';
 
     if (!codeVerifier) {
-      setError('Данные сессии потеряны (code_verifier). Попробуйте нажать кнопку VK ещё раз.');
+      setError(TR("Данные сессии потеряны (code_verifier). Попробуйте нажать кнопку VK ещё раз.", "Session data lost (code_verifier). Try pressing the VK button again."));
       return;
     }
     if (!deviceId) {
-      setError('Данные сессии потеряны (device_id). Попробуйте нажать кнопку VK ещё раз.');
+      setError(TR("Данные сессии потеряны (device_id). Попробуйте нажать кнопку VK ещё раз.", "Session data lost (device_id). Try pressing the VK button again."));
       return;
     }
 
@@ -74,7 +75,7 @@ export default function VKCallback() {
 
     try {
       /* ── 1. Обмен кода через серверный прокси ──────────── */
-      setStep('Получаем токен VK...');
+      setStep(TR("Получаем токен VK...", "We receive the VK token..."));
 
       const res = await fetch('/api/vk-token', {
         method:  'POST',
@@ -90,7 +91,7 @@ export default function VKCallback() {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Сервер вернул ${res.status}: ${text}`);
+        throw new Error(TR(`Сервер вернул ${res.status}: ${text}`, `Server returned ${res.status}: ${text}`));
       }
 
       const data = await res.json();
@@ -100,15 +101,15 @@ export default function VKCallback() {
       }
 
       if (!data.access_token) {
-        throw new Error('Токен не получен от VK');
+        throw new Error(TR("Токен не получен от VK", "Token not received from VK"));
       }
 
       /* ── 2. Данные пользователя ────────────────────────── */
-      setStep('Получаем профиль...');
+      setStep(TR("Получаем профиль...", "We get a profile..."));
 
       const vkUser = data.user_info;
       if (!vkUser?.user_id && !vkUser?.id) {
-        throw new Error('Не удалось получить профиль VK');
+        throw new Error(TR("Не удалось получить профиль VK", "Failed to get VK profile"));
       }
 
       const vkId = vkUser.user_id || vkUser.id;
@@ -123,7 +124,7 @@ export default function VKCallback() {
       const password = `vk_oauth_${vkId}_${VK_APP_ID}_psywebnote`;
 
       /* ── 3. Вход или регистрация ───────────────────────── */
-      setStep('Входим в PsyWebNote...');
+      setStep(TR("Входим в PsyWebNote...", "Login to PsyWebNote..."));
 
       const loginRes = await login(email, password);
       if (loginRes.success) { navigate('/dashboard'); return; }
@@ -131,10 +132,10 @@ export default function VKCallback() {
       const regRes = await register(email, password, name);
       if (regRes.success) { navigate('/onboarding'); return; }
 
-      throw new Error(regRes.error || 'Не удалось создать аккаунт');
+      throw new Error(regRes.error || TR("Не удалось создать аккаунт", "Failed to create account"));
 
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Неизвестная ошибка VK OAuth';
+      const msg = e instanceof Error ? e.message : TR("Неизвестная ошибка VK OAuth", "Unknown VK OAuth error");
       console.error('[VKCallback]', msg);
       setError(msg);
     }
@@ -147,15 +148,15 @@ export default function VKCallback() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">⚠️</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Ошибка входа через VK</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{TR("Ошибка входа через VK", "Login error via VK")}</h2>
           <p className="text-gray-600 text-sm mb-4 leading-relaxed break-words">{error}</p>
 
           <div className="bg-blue-50 rounded-xl p-4 text-left mb-4">
-            <p className="text-xs font-semibold text-blue-800 mb-2">💡 Проверьте:</p>
+            <p className="text-xs font-semibold text-blue-800 mb-2">{TR("💡 Проверьте:", "💡 Check:")}</p>
             <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Переменные <code className="bg-blue-100 px-1 rounded">VITE_VK_APP_ID</code>, <code className="bg-blue-100 px-1 rounded">VK_APP_ID</code>, <code className="bg-blue-100 px-1 rounded">VK_APP_SECRET</code> в Vercel</li>
-              <li>• Redirect URL в VK: <code className="bg-blue-100 px-1 rounded text-xs break-all">{REDIRECT_URI}</code></li>
-              <li>• Базовый домен в VK: <code className="bg-blue-100 px-1 rounded">{window.location.hostname}</code></li>
+              <li>{TR("• Переменные ", "• Variables")}<code className="bg-blue-100 px-1 rounded">VITE_VK_APP_ID</code>, <code className="bg-blue-100 px-1 rounded">VK_APP_ID</code>, <code className="bg-blue-100 px-1 rounded">VK_APP_SECRET</code> {TR(" в Vercel", "in Vercel")}</li>
+              <li>{TR("• Redirect URL в VK: ", "• Redirect URL to VK:")}<code className="bg-blue-100 px-1 rounded text-xs break-all">{REDIRECT_URI}</code></li>
+              <li>{TR("• Базовый домен в VK: ", "• Base domain in VK:")}<code className="bg-blue-100 px-1 rounded">{window.location.hostname}</code></li>
             </ul>
           </div>
 
@@ -163,8 +164,7 @@ export default function VKCallback() {
             onClick={() => navigate('/login')}
             className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
           >
-            Вернуться к входу
-          </button>
+            {TR("\n            Вернуться к входу\n          ", "Back to login")}</button>
         </div>
       </div>
     );
