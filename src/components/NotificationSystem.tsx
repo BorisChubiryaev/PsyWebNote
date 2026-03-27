@@ -1,8 +1,10 @@
+import { TR } from '../utils/tr';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Bell, X, Clock, CheckCircle, FileText, AlertCircle, ExternalLink, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getNotificationSettings } from '../utils/notificationSettings';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ActiveNotification {
   id: string;
@@ -69,7 +71,7 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
       const existing = sessions.find(s => s.id === sessionId);
       await updateSession(sessionId, {
         status,
-        notes: existing?.notes ? `${existing.notes}\n\n--- Быстрая заметка ---\n${quickNote}` : quickNote,
+        notes: existing?.notes ? `${existing.notes}\n\n--- ${TR('Быстрая заметка', 'Quick note')} ---\n${quickNote}` : quickNote,
         mood: clientMood,
         isPaid: status === 'completed',
       });
@@ -102,7 +104,7 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
           <div className="w-10 h-1 bg-gray-200 dark:bg-slate-600 rounded-full mx-auto mb-4 sm:hidden" />
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Сессия завершена</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{TR("Сессия завершена", "Session ended")}</h2>
               <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{clientName} · {aptDate} · {aptTime}</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full">
@@ -113,12 +115,12 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
           <div className="space-y-4">
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Статус сессии</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{TR("Статус сессии", "Session status")}</label>
               <div className="grid grid-cols-3 gap-2">
                 {([
-                  { val: 'completed' as const, label: 'Проведена',   icon: CheckCircle, active: 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' },
-                  { val: 'cancelled' as const, label: 'Отменена',    icon: X,           active: 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' },
-                  { val: 'no-show'   as const, label: 'Не пришёл',   icon: AlertCircle, active: 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' },
+                  { val: 'completed' as const, label: TR("Проведена", "Conducted"),   icon: CheckCircle, active: 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' },
+                  { val: 'cancelled' as const, label: TR("Отменена", "Canceled"),    icon: X,           active: 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' },
+                  { val: 'no-show'   as const, label: TR("Не пришёл", "No-show"),   icon: AlertCircle, active: 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' },
                 ]).map(s => (
                   <button key={s.val} onClick={() => setStatus(s.val)}
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 text-xs font-medium ${
@@ -134,23 +136,22 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
             {status === 'completed' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Состояние клиента: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{clientMood}</span>/10
+                  {TR("\n                  Состояние клиента: ", "Client status:")}<span className="text-indigo-600 dark:text-indigo-400 font-bold">{clientMood}</span>/10
                 </label>
                 <input type="range" min="1" max="10" value={clientMood}
                   onChange={e => setClientMood(Number(e.target.value))}
                   className="w-full h-3 rounded-lg cursor-pointer accent-indigo-600" />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>😔 Плохо</span><span>😊 Отлично</span>
+                  <span>{TR("😔 Плохо", "😔 Bad")}</span><span>{TR("😊 Отлично", "😊 Great")}</span>
                 </div>
               </div>
             )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <FileText className="w-4 h-4 inline mr-1" />Быстрая заметка
-              </label>
+                <FileText className="w-4 h-4 inline mr-1" />{TR("Быстрая заметка\n              ", "Quick note")}</label>
               <textarea value={quickNote} onChange={e => setQuickNote(e.target.value)} rows={3}
-                placeholder="Основные темы, инсайты, важные моменты..."
+                placeholder={TR("Основные темы, инсайты, важные моменты...", "Main themes, insights, important points...")}
                 className="w-full p-3 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
@@ -159,17 +160,15 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
               <div className="flex gap-2">
                 <button onClick={onClose}
                   className="flex-1 px-4 py-3 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 text-sm font-medium">
-                  Позже
-                </button>
+                  {TR("\n                  Позже\n                ", "Later")}</button>
                 <button onClick={handleSave} disabled={saving}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 text-sm font-medium">
-                  {saving ? 'Сохранение...' : 'Сохранить'}
+                  {saving ? TR("Сохранение...", "Saving...") : TR("Сохранить", "Save")}
                 </button>
               </div>
               <button onClick={handleOpenFull}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-sm font-medium border border-indigo-200 dark:border-indigo-700">
-                <ExternalLink className="w-4 h-4" /> Открыть полную форму
-              </button>
+                <ExternalLink className="w-4 h-4" /> {TR(" Открыть полную форму\n              ", "Open full form")}</button>
             </div>
           </div>
         </div>
@@ -181,6 +180,7 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
 // ── Main NotificationSystem (SINGLETON — render only ONCE in App.tsx) ─────────
 export const NotificationSystem = () => {
   const { appointments, clients } = useApp();
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<ActiveNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -239,10 +239,17 @@ export const NotificationSystem = () => {
           notifiedIds.add(notifId); idsChanged = true;
 
           let message: string;
-          if (hoursSinceEnd < 0.25)     message = `Сессия с ${apt.clientName} только что завершилась — обновите статус!`;
-          else if (hoursSinceEnd < 1)   message = `Сессия с ${apt.clientName} завершилась ${Math.round(minSinceEnd)} мин. назад.`;
-          else if (hoursSinceEnd < 3)   message = `Сессия с ${apt.clientName} завершилась ${Math.floor(hoursSinceEnd)} ч. назад.`;
-          else                          message = `⚠️ Сессия с ${apt.clientName} (${apt.date} ${apt.time}) требует обновления статуса!`;
+          if (language === 'ru') {
+            if (hoursSinceEnd < 0.25) message = `Сессия с ${apt.clientName} только что завершилась, обновите статус.`;
+            else if (hoursSinceEnd < 1) message = `Сессия с ${apt.clientName} завершилась ${Math.round(minSinceEnd)} мин назад.`;
+            else if (hoursSinceEnd < 3) message = `Сессия с ${apt.clientName} завершилась ${Math.floor(hoursSinceEnd)} ч назад.`;
+            else message = `Сессия с ${apt.clientName} (${apt.date} ${apt.time}) требует обновления статуса.`;
+          } else {
+            if (hoursSinceEnd < 0.25) message = `Session with ${apt.clientName} has just ended, update the status.`;
+            else if (hoursSinceEnd < 1) message = `Session with ${apt.clientName} ended ${Math.round(minSinceEnd)} min ago.`;
+            else if (hoursSinceEnd < 3) message = `Session with ${apt.clientName} ended ${Math.floor(hoursSinceEnd)} h ago.`;
+            else message = `Session with ${apt.clientName} (${apt.date} ${apt.time}) needs a status update.`;
+          }
 
           toAdd.push({
             id: notifId, type: 'session_ended',
@@ -268,8 +275,10 @@ export const NotificationSystem = () => {
           notifiedIds.add(notifId); idsChanged = true;
 
           const message = minUntilStart < 2
-            ? `Сессия с ${apt.clientName} начинается!`
-            : `Сессия с ${apt.clientName} начнётся через ${Math.round(minUntilStart)} мин.`;
+            ? (language === 'ru' ? `Сессия с ${apt.clientName} начинается.` : `Session with ${apt.clientName} is starting now.`)
+            : (language === 'ru'
+              ? `Сессия с ${apt.clientName} начнется через ${Math.round(minUntilStart)} мин.`
+              : `Session with ${apt.clientName} starts in ${Math.round(minUntilStart)} min.`);
 
           toAdd.push({
             id: notifId, type: 'session_starting',
@@ -288,7 +297,7 @@ export const NotificationSystem = () => {
     if (idsChanged)     saveNotifiedIds(notifiedIds);
     if (browserChanged) saveBrowserNotified(browserNotified);
     if (toAdd.length > 0) setNotifications(prev => [...toAdd, ...prev]);
-  }, [appointments, clients]);
+  }, [appointments, clients, language]);
 
   // Check when appointments change (catches backdated additions instantly)
   useEffect(() => { checkAppointments(); }, [checkAppointments]);
@@ -357,14 +366,14 @@ export const NotificationSystem = () => {
           <div className="p-4 flex items-center justify-between bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4" />
-              <span className="font-semibold text-sm">Уведомления</span>
+              <span className="font-semibold text-sm">{TR("Уведомления", "Notifications")}</span>
               {unreadCount > 0 && (
                 <span className="bg-white/30 text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
               {notifications.length > 0 && (
-                <button onClick={clearAll} className="text-xs opacity-80 hover:opacity-100">Очистить</button>
+                <button onClick={clearAll} className="text-xs opacity-80 hover:opacity-100">{TR("Очистить", "Clear")}</button>
               )}
               <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/20 rounded-lg">
                 <X className="w-4 h-4" />
@@ -377,8 +386,8 @@ export const NotificationSystem = () => {
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-400 dark:text-gray-500">
                 <Bell className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                <p className="font-medium text-sm">Нет уведомлений</p>
-                <p className="text-xs mt-1">Все сессии в порядке</p>
+                <p className="font-medium text-sm">{TR("Нет уведомлений", "No notifications")}</p>
+                <p className="text-xs mt-1">{TR("Все сессии в порядке", "All sessions are ok")}</p>
               </div>
             ) : notifications.map(n => (
               <button key={n.id} onClick={() => handleClick(n)}
@@ -400,7 +409,7 @@ export const NotificationSystem = () => {
 
           {notifications.length > 0 && (
             <div className="p-2.5 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/30 text-center">
-              <p className="text-xs text-gray-400 dark:text-gray-500">Нажмите для обновления статуса сессии</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">{TR("Нажмите для обновления статуса сессии", "Click to update session status")}</p>
             </div>
           )}
         </div>
