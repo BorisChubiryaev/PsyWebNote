@@ -44,7 +44,46 @@ function mapProfile(row: any): User {
     workingDays:        row.working_days ?? [1, 2, 3, 4, 5],
     packages:           row.packages ?? [],
     onboardingComplete: row.onboarding_complete ?? false,
+    calToken:           row.cal_token ?? undefined,
   };
+}
+
+/** Generate a random hex token for webcal subscription */
+function generateCalToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Ensure the user has a cal_token, generate and save if missing. Returns the token. */
+export async function ensureCalToken(userId: string): Promise<string> {
+  // Check if already exists
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('cal_token')
+    .eq('id', userId)
+    .single();
+
+  if (profile?.cal_token) return profile.cal_token as string;
+
+  // Generate new token
+  const token = generateCalToken();
+  await supabase
+    .from('profiles')
+    .update({ cal_token: token })
+    .eq('id', userId);
+
+  return token;
+}
+
+/** Regenerate cal_token (invalidates old webcal subscription link) */
+export async function regenerateCalToken(userId: string): Promise<string> {
+  const token = generateCalToken();
+  await supabase
+    .from('profiles')
+    .update({ cal_token: token })
+    .eq('id', userId);
+  return token;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -201,6 +240,7 @@ export async function authUpdateProfile(userId: string, updates: Partial<User>):
   if (updates.workingDays        !== undefined) payload.working_days        = updates.workingDays;
   if (updates.packages           !== undefined) payload.packages            = updates.packages;
   if (updates.onboardingComplete !== undefined) payload.onboarding_complete = updates.onboardingComplete;
+  if (updates.calToken           !== undefined) payload.cal_token           = updates.calToken;
 
   if (Object.keys(payload).length === 0) return;
 
