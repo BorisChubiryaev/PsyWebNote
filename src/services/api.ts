@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 /**
  * PsyWebNote — Data Layer
  * Primary:  Supabase (PostgreSQL + Auth)
@@ -116,11 +117,11 @@ export async function authRegister(
   const n = name.trim();
 
   if (!e || !password || !n)
-    return { success: false, user: null, error: 'Заполните все поля' };
+    return { success: false, user: null, error: TR("Заполните все поля", "Fill in all fields") };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
-    return { success: false, user: null, error: 'Некорректный email' };
+    return { success: false, user: null, error: TR("Некорректный email", "Incorrect email") };
   if (password.length < 6)
-    return { success: false, user: null, error: 'Пароль должен быть не менее 6 символов' };
+    return { success: false, user: null, error: TR("Пароль должен быть не менее 6 символов", "The password must be at least 6 characters") };
 
   const { data, error } = await supabase.auth.signUp({
     email: e,
@@ -132,14 +133,14 @@ export async function authRegister(
     // Supabase error messages → русские
     const msg = error.message.toLowerCase();
     if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('email'))
-      return { success: false, user: null, error: 'Пользователь с таким email уже существует' };
+      return { success: false, user: null, error: TR("Пользователь с таким email уже существует", "A user with this email already exists") };
     if (msg.includes('password'))
-      return { success: false, user: null, error: 'Пароль должен быть не менее 6 символов' };
-    return { success: false, user: null, error: 'Ошибка регистрации: ' + error.message };
+      return { success: false, user: null, error: TR("Пароль должен быть не менее 6 символов", "The password must be at least 6 characters") };
+    return { success: false, user: null, error: TR("Ошибка регистрации: ", "Registration error:") + error.message };
   }
 
   if (!data.user)
-    return { success: false, user: null, error: 'Ошибка создания пользователя' };
+    return { success: false, user: null, error: TR("Ошибка создания пользователя", "Error creating user") };
 
   // Wait a moment for the trigger to create the profile
   await new Promise(r => setTimeout(r, 800));
@@ -152,21 +153,21 @@ export async function authRegister(
 export async function authLogin(email: string, password: string): Promise<AuthResult> {
   const e = email.trim().toLowerCase();
   if (!e || !password)
-    return { success: false, user: null, error: 'Заполните все поля' };
+    return { success: false, user: null, error: TR("Заполните все поля", "Fill in all fields") };
 
   const { data, error } = await supabase.auth.signInWithPassword({ email: e, password });
 
   if (error) {
     const msg = error.message.toLowerCase();
     if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('wrong'))
-      return { success: false, user: null, error: 'Неверный email или пароль' };
+      return { success: false, user: null, error: TR("Неверный email или пароль", "Invalid email or password") };
     if (msg.includes('email not confirmed'))
-      return { success: false, user: null, error: 'Подтвердите email (проверьте почту)' };
-    return { success: false, user: null, error: 'Ошибка входа: ' + error.message };
+      return { success: false, user: null, error: TR("Подтвердите email (проверьте почту)", "Confirm your email (check your email)") };
+    return { success: false, user: null, error: TR("Ошибка входа: ", "Login error:") + error.message };
   }
 
   if (!data.user)
-    return { success: false, user: null, error: 'Ошибка входа' };
+    return { success: false, user: null, error: TR("Ошибка входа", "Login error") };
 
   const profile = await _fetchOrCreateProfile(
     data.user.id,
@@ -495,9 +496,9 @@ async function _fetchOrCreateProfile(
 
   // Trigger didn't fire or row missing — create manually
   const defaultPackages = [
-    { id: 'pkg1', name: 'Базовый',  sessions: 4,  price: 20000, discount: 10 },
-    { id: 'pkg2', name: 'Стандарт', sessions: 8,  price: 36000, discount: 15 },
-    { id: 'pkg3', name: 'Премиум',  sessions: 12, price: 48000, discount: 20 },
+    { id: 'pkg1', name: TR("Базовый", "Base"),  sessions: 4,  price: 20000, discount: 10 },
+    { id: 'pkg2', name: TR("Стандарт", "Standard"), sessions: 8,  price: 36000, discount: 15 },
+    { id: 'pkg3', name: TR("Премиум", "Premium"),  sessions: 12, price: 48000, discount: 20 },
   ];
 
   const { data: created } = await supabase
