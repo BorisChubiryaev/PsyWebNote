@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 interface Props {
   subtitle?: string;
 }
@@ -21,14 +22,14 @@ export default function LoadingScreen({ subtitle }: Props) {
         PsyWebNote
       </h1>
       <p className="text-gray-400 text-sm mb-10">
-        {subtitle ?? 'Платформа для психологов'}
+        {subtitle ?? TR("Платформа для психологов", "Platform for psychologists")}
       </p>
 
       {/* Loading bar */}
       <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
         <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-loading-bar" />
       </div>
-      <p className="text-xs text-gray-400 mt-3">Загружаем ваш профиль...</p>
+      <p className="text-xs text-gray-400 mt-3">{TR("Загружаем ваш профиль...", "Loading your profile...")}</p>
 
       <style>{`
         @keyframes loading-bar {
