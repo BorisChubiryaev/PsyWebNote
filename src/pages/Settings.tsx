@@ -1,3 +1,4 @@
+import { TR } from '../utils/tr';
 import { useState } from 'react';
 import Layout from '../components/Layout';
 import { Bell, Moon, Sun, Clock, Volume2, VolumeX, Shield, Smartphone, Check, Globe } from 'lucide-react';
@@ -60,7 +61,7 @@ export default function Settings() {
               className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${language === 'ru' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'}`}
             >
               <span className="text-2xl">🇷🇺</span>
-              <span className={`text-sm font-medium ${language === 'ru' ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>Русский</span>
+              <span className={`text-sm font-medium ${language === 'ru' ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>{TR("Русский", "Russian")}</span>
               {language === 'ru' && <Check className="w-4 h-4 text-indigo-600" />}
             </button>
             <button
@@ -201,10 +202,10 @@ export default function Settings() {
             <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-300 mb-2">📱 iPhone / iPad</p>
             {language === 'ru' ? (
               <ol className="text-xs text-indigo-700 dark:text-indigo-400 space-y-1 list-decimal ml-4">
-                <li>Откройте сайт в браузере Safari</li>
-                <li>Нажмите кнопку <strong>Поделиться</strong> (квадрат со стрелкой вверх)</li>
-                <li>Выберите <strong>«На экран «Домой»»</strong></li>
-                <li>Нажмите <strong>«Добавить»</strong></li>
+                <li>{TR("Откройте сайт в браузере Safari", "Open the site in Safari browser")}</li>
+                <li>{TR("Нажмите кнопку ", "Click the button")}<strong>{TR("Поделиться", "Share")}</strong> {TR(" (квадрат со стрелкой вверх)", "(square with up arrow)")}</li>
+                <li>{TR("Выберите ", "Select")}<strong>{TR("«На экран «Домой»»", "\"To Home Screen\"")}</strong></li>
+                <li>{TR("Нажмите ", "Click")}<strong>{TR("«Добавить»", "\"Add\"")}</strong></li>
               </ol>
             ) : (
               <ol className="text-xs text-indigo-700 dark:text-indigo-400 space-y-1 list-decimal ml-4">
@@ -219,7 +220,7 @@ export default function Settings() {
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">🤖 Android / Desktop Chrome</p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               {language === 'ru'
-                ? 'Нажмите на значок установки в адресной строке браузера или выберите «Установить приложение» в меню браузера.'
+                ? TR("Нажмите на значок установки в адресной строке браузера или выберите «Установить приложение» в меню браузера.", "Click the install icon in your browser's address bar or select \"Install App\" from your browser menu.")
                 : 'Click the install icon in the browser address bar or select "Install app" from the browser menu.'}
             </p>
           </div>
@@ -229,14 +230,14 @@ export default function Settings() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-indigo-500" />
-            <h2 className="font-bold text-gray-900 dark:text-white">{language === 'ru' ? 'Безопасность' : 'Security'}</h2>
+            <h2 className="font-bold text-gray-900 dark:text-white">{language === 'ru' ? TR("Безопасность", "Safety") : 'Security'}</h2>
           </div>
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             {(language === 'ru' ? [
-              'Данные изолированы по аккаунту (Row Level Security)',
-              'Пароли зашифрованы (bcrypt / PBKDF2)',
-              'Соединение защищено (HTTPS / TLS)',
-              'AI-запросы не сохраняются на сторонних серверах',
+              TR("Данные изолированы по аккаунту (Row Level Security)", "Data isolated by account (Row Level Security)"),
+              TR("Пароли зашифрованы (bcrypt / PBKDF2)", "Passwords are encrypted (bcrypt/PBKDF2)"),
+              TR("Соединение защищено (HTTPS / TLS)", "Connection is secure (HTTPS/TLS)"),
+              TR("AI-запросы не сохраняются на сторонних серверах", "AI requests are not saved on third-party servers"),
             ] : [
               'Data is isolated per account (Row Level Security)',
               'Passwords are encrypted (bcrypt / PBKDF2)',
