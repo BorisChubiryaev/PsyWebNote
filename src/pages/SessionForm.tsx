@@ -23,6 +23,9 @@ export default function SessionForm() {
   const initializedRef = useRef(false);
 
   const defaultAmount = client?.individualRate ?? user?.hourlyRate ?? 3000;
+  const rateSourceText = client?.individualRate != null
+    ? t('session_amount_source_client')
+    : t('session_amount_source_profile');
 
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -52,7 +55,7 @@ export default function SessionForm() {
         homework: existingSession.homework || '',
         nextSessionGoals: existingSession.nextSessionGoals || '',
         isPaid: existingSession.isPaid,
-        amount: existingSession.amount || client?.individualRate || user?.hourlyRate || 3000,
+        amount: existingSession.amount ?? client?.individualRate ?? user?.hourlyRate ?? 3000,
       });
       setTopics(existingSession.topics || []);
     }
@@ -381,6 +384,11 @@ export default function SessionForm() {
                   {clientCurrency}
                 </span>
               </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {isEditing ? t('session_amount_existing') : rateSourceText}
+                {' '}
+                ({defaultAmount.toLocaleString()} {clientCurrency})
+              </p>
             </div>
           </div>
 
