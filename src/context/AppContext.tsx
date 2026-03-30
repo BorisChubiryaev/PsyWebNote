@@ -62,10 +62,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [dataLoading, setDataLoading] = useState(false);  // data loading
 
   // Refs for latest state in async callbacks
+  const clientsRef      = useRef<Client[]>([]);
   const sessionsRef     = useRef<Session[]>([]);
   const appointmentsRef = useRef<Appointment[]>([]);
   const userRef         = useRef<User | null>(null);
 
+  useEffect(() => { clientsRef.current = clients; },           [clients]);
   useEffect(() => { sessionsRef.current = sessions; },         [sessions]);
   useEffect(() => { appointmentsRef.current = appointments; }, [appointments]);
   useEffect(() => { userRef.current = user; },                 [user]);
@@ -226,7 +228,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!u) return '';
 
     // Use individual rate if client has one
-    const clientForRate = clients.find(c => c.id === apt.clientId);
+    const clientForRate = clientsRef.current.find(c => c.id === apt.clientId);
     const effectiveRate = clientForRate?.individualRate ?? u.hourlyRate;
 
     const newSess = await insertSession(u.id, {
