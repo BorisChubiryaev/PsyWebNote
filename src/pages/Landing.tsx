@@ -6,6 +6,7 @@ import {
   MessageSquare, Zap, Lock, Globe, ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 const features = [
   {
@@ -113,6 +114,14 @@ const faqs = [
 export default function Landing() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { language, setLanguage } = useLanguage();
+
+  const toggleLanguage = () => {
+    const nextLanguage = language === 'ru' ? 'en' : 'ru';
+    setLanguage(nextLanguage);
+    // Landing has static translated arrays, so we reload once to update all content.
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
@@ -138,6 +147,12 @@ export default function Landing() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleLanguage}
+              className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2 border border-gray-200 rounded-lg"
+            >
+              {language === 'ru' ? 'EN' : 'RU'}
+            </button>
             <button
               onClick={() => navigate('/login')}
               className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2"
