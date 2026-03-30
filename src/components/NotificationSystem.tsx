@@ -1,5 +1,6 @@
 import { TR } from '../utils/tr';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { Bell, X, Clock, CheckCircle, FileText, AlertCircle, ExternalLink, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -359,7 +360,7 @@ export const NotificationSystem = () => {
       </button>
 
       {/* Dropdown — fixed position */}
-      {isOpen && (
+      {isOpen && createPortal(
         <div
           ref={dropdownRef}
           className="fixed z-[60] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
@@ -419,7 +420,7 @@ export const NotificationSystem = () => {
             </div>
           )}
         </div>
-      )}
+      , document.body)}
 
       <QuickNoteModal
         isOpen={quickNote.isOpen}
