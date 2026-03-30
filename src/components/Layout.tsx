@@ -1,5 +1,5 @@
 import { TR } from '../utils/tr';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, User, LogOut,
@@ -14,6 +14,9 @@ interface LayoutProps { children: React.ReactNode; }
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
+  );
   const { user, logout } = useApp();
   const { isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
@@ -32,6 +35,13 @@ export default function Layout({ children }: LayoutProps) {
   const handleLogout = () => { logout(); navigate('/login'); };
   const closeSidebar = () => setSidebarOpen(false);
 
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
 
@@ -44,7 +54,7 @@ export default function Layout({ children }: LayoutProps) {
           <span className="font-bold text-gray-900 dark:text-white text-sm">PsyWebNote</span>
         </div>
         <div className="flex items-center gap-1">
-          <NotificationSystem />
+          {!isDesktop && <NotificationSystem />}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300"
@@ -82,7 +92,7 @@ export default function Layout({ children }: LayoutProps) {
               <p className="text-xs text-gray-500 dark:text-gray-400">{t('app_subtitle')}</p>
             </div>
             <div className="flex items-center gap-1.5">
-              <NotificationSystem />
+              {isDesktop && <NotificationSystem />}
               <button
                 onClick={toggleTheme}
                 className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors"
