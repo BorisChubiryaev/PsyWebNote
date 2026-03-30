@@ -8,6 +8,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import NotificationSystem from './NotificationSystem';
 
 interface LayoutProps { children: React.ReactNode; }
 
@@ -43,13 +44,13 @@ export default function Layout({ children }: LayoutProps) {
           <span className="font-bold text-gray-900 dark:text-white text-sm">PsyWebNote</span>
         </div>
         <div className="flex items-center gap-1">
+          <NotificationSystem />
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300"
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <div id="notification-portal-mobile" />
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300"
@@ -80,14 +81,16 @@ export default function Layout({ children }: LayoutProps) {
               <h1 className="font-bold text-gray-900 dark:text-white text-sm">PsyWebNote</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">{t('app_subtitle')}</p>
             </div>
-            {/* Theme toggle desktop */}
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors"
-              title={isDark ? t('theme_light') : t('theme_dark')}
-            >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <NotificationSystem />
+              <button
+                onClick={toggleTheme}
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors"
+                title={isDark ? t('theme_light') : t('theme_dark')}
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
