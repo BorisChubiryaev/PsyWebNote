@@ -45,7 +45,7 @@ interface QuickNoteModalProps {
 }
 
 const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTime }: QuickNoteModalProps) => {
-  const { sessions, updateSession, appointments, updateAppointment, ensureSessionForAppointment, clients, updateClient } = useApp();
+  const { sessions, updateSession, appointments, updateAppointment, ensureSessionForAppointment } = useApp();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'completed' | 'cancelled' | 'no-show'>('completed');
   const [quickNote, setQuickNote] = useState('');
@@ -64,9 +64,6 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
     let sessionId = session?.id;
     if (!sessionId && appointment) sessionId = await ensureSessionForAppointment(appointment);
 
-    const wasCompleted = session?.status === 'completed';
-    const isNowCompleted = status === 'completed';
-
     if (sessionId) {
       const existing = sessions.find(s => s.id === sessionId);
       await updateSession(sessionId, {
@@ -77,13 +74,6 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
       });
     }
     if (appointment) await updateAppointment(appointment.id, { status });
-
-    if (!wasCompleted && isNowCompleted) {
-      const client = clients.find(c => c.id === clientId);
-      if (client?.packageId && (client.remainingSessions ?? 0) > 0) {
-        await updateClient(clientId, { remainingSessions: (client.remainingSessions ?? 1) - 1 });
-      }
-    }
     setSaving(false);
     onClose();
   };

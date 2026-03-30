@@ -474,8 +474,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateSession = async (id: string, data: Partial<Session>) => {
     const old = sessionsRef.current.find(s => s.id === id);
+    if (!old) return;
+
+    const nextSession = { ...old, ...data };
     const wasNotCompleted = old?.status !== 'completed';
     const isNowCompleted  = data.status === 'completed';
+    const linkedAppointment = appointmentsRef.current.find(a =>
+      (old.appointmentId && a.id === old.appointmentId) ||
+      (a.clientId === old.clientId && a.date === old.date && a.time === old.time),
+    );
 
     // Optimistic update
     setSessions(prev => {
@@ -486,16 +493,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await updateSessionDb(id, data);
 
-    // Sync appointment status
-    if (data.status && old) {
-      const aptToUpdate = appointmentsRef.current.find(
-        a => a.clientId === old.clientId && a.date === old.date && a.time === old.time,
-      );
-      if (aptToUpdate) {
-        setAppointments(prev =>
-          prev.map(a => a.id === aptToUpdate.id ? { ...a, status: data.status! } : a),
-        );
-        await updateAppointmentDb(aptToUpdate.id, { status: data.status });
+    // Sync calendar entry with session changes
+    if (linkedAppointment) {
+      if (nextSession.status === 'cancelled') {
+        await deleteAppointmentDb(linkedAppointment.id);
+        setAppointments(prev => {
+          const next = prev.filter(a => a.id !== linkedAppointment.id);
+          appointmentsRef.current = next;
+          return next;
+        });
+      } else {
+        const appointmentPatch: Partial<Appointment> = {};
+        if (data.date !== undefined) appointmentPatch.date = nextSession.date;
+        if (data.time !== undefined) appointmentPatch.time = nextSession.time;
+        if (data.duration !== undefined) appointmentPatch.duration = nextSession.duration;
+        if (data.status !== undefined) appointmentPatch.status = nextSession.status;
+
+        if (Object.keys(appointmentPatch).length > 0) {
+          setAppointments(prev => {
+            const next = prev.map(a => a.id === linkedAppointment.id ? { ...a, ...appointmentPatch } : a);
+            appointmentsRef.current = next;
+            return next;
+          });
+          await updateAppointmentDb(linkedAppointment.id, appointmentPatch);
+        }
       }
     }
 
@@ -520,12 +541,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteSession = async (id: string) => {
+    const sessionToDelete = sessionsRef.current.find(s => s.id === id);
+    const linkedAppointment = sessionToDelete
+      ? appointmentsRef.current.find(a =>
+          (sessionToDelete.appointmentId && a.id === sessionToDelete.appointmentId) ||
+          (a.clientId === sessionToDelete.clientId && a.date === sessionToDelete.date && a.time === sessionToDelete.time),
+        )
+      : null;
+
     await deleteSessionDb(id);
+    if (linkedAppointment) {
+      await deleteAppointmentDb(linkedAppointment.id);
+    }
     setSessions(prev => {
       const next = prev.filter(s => s.id !== id);
       sessionsRef.current = next;
       return next;
     });
+    if (linkedAppointment) {
+      setAppointments(prev => {
+        const next = prev.filter(a => a.id !== linkedAppointment.id);
+        appointmentsRef.current = next;
+        return next;
+      });
+    }
   };
 
   // ── Appointments CRUD ──────────────────────────────────────
@@ -549,29 +588,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateAppointment = async (id: string, data: Partial<Appointment>) => {
+    const old = appointmentsRef.current.find(a => a.id === id);
+    if (!old) return;
+
+    const nextAppointment = { ...old, ...data };
     setAppointments(prev => {
       const next = prev.map(a => a.id === id ? { ...a, ...data } : a);
       appointmentsRef.current = next;
       return next;
     });
 
-    await updateAppointmentDb(id, data);
+    if (nextAppointment.status === 'cancelled') {
+      await deleteAppointmentDb(id);
+      setAppointments(prev => {
+        const next = prev.filter(a => a.id !== id);
+        appointmentsRef.current = next;
+        return next;
+      });
+    } else {
+      await updateAppointmentDb(id, data);
+    }
 
-    // Sync session status
-    if (data.status) {
-      const apt = appointmentsRef.current.find(a => a.id === id);
-      if (apt) {
-        const sess = sessionsRef.current.find(
-          s => s.clientId === apt.clientId && s.date === apt.date && s.time === apt.time,
-        );
-        if (sess) {
-          setSessions(prev => {
-            const next = prev.map(s => s.id === sess.id ? { ...s, status: data.status! } : s);
-            sessionsRef.current = next;
-            return next;
-          });
-          await updateSessionDb(sess.id, { status: data.status });
-        }
+    const sess = sessionsRef.current.find(
+      s => (s.appointmentId && s.appointmentId === id) ||
+        (s.clientId === old.clientId && s.date === old.date && s.time === old.time),
+    );
+    if (sess) {
+      const sessionPatch: Partial<Session> = {};
+      if (data.status !== undefined) sessionPatch.status = data.status;
+      if (data.date !== undefined) sessionPatch.date = nextAppointment.date;
+      if (data.time !== undefined) sessionPatch.time = nextAppointment.time;
+      if (data.duration !== undefined) sessionPatch.duration = nextAppointment.duration;
+      if (!sess.appointmentId) sessionPatch.appointmentId = id;
+
+      if (Object.keys(sessionPatch).length > 0) {
+        setSessions(prev => {
+          const next = prev.map(s => s.id === sess.id ? { ...s, ...sessionPatch } : s);
+          sessionsRef.current = next;
+          return next;
+        });
+        await updateSessionDb(sess.id, sessionPatch);
       }
     }
   };

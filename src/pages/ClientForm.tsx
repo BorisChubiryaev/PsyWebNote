@@ -60,7 +60,7 @@ export default function ClientForm() {
     }
   }, [id, isEditing, getClientById]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const rateVal = formData.individualRate === '' ? undefined : Number(formData.individualRate);
@@ -74,10 +74,10 @@ export default function ClientForm() {
       schedules,
     };
 
-    if (isEditing) {
-      updateClient(id, clientData);
+    if (isEditing && id) {
+      await updateClient(id, clientData);
     } else {
-      addClient(clientData);
+      await addClient(clientData);
     }
 
     navigate('/clients');

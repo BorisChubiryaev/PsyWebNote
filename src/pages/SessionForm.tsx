@@ -11,7 +11,7 @@ export default function SessionForm() {
   const navigate = useNavigate();
   const {
     addSession, updateSession, sessions, getClientById, user,
-    appointments, addAppointment, updateAppointment, updateClient, clients,
+    appointments, addAppointment, updateClient, clients,
   } = useApp();
   const { t } = useLanguage();
 
@@ -68,13 +68,6 @@ export default function SessionForm() {
 
     if (isEditing && sessionId) {
       await updateSession(sessionId, sessionData);
-
-      const relatedApt = appointments.find(a =>
-        a.clientId === clientId && a.date === formData.date && a.time === formData.time
-      );
-      if (relatedApt) {
-        await updateAppointment(relatedApt.id, { status: formData.status });
-      }
     } else {
       let aptId: string | undefined;
       const existingApt = appointments.find(a =>
@@ -98,7 +91,7 @@ export default function SessionForm() {
       await addSession({ ...sessionData, appointmentId: aptId });
     }
 
-    if (!wasCompleted && isNowCompleted) {
+    if (!isEditing && !wasCompleted && isNowCompleted) {
       const currentClient = clients.find(c => c.id === clientId);
       if (currentClient?.packageId && (currentClient.remainingSessions ?? 0) > 0) {
         await updateClient(clientId, { remainingSessions: (currentClient.remainingSessions ?? 1) - 1 });

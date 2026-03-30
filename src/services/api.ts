@@ -75,6 +75,7 @@ function mapSession(row: any): Session {
   return {
     id:               row.id,
     clientId:         row.client_id,
+    appointmentId:    row.appointment_id ?? undefined,
     date:             typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
     time:             row.time,
     duration:         row.duration ?? 60,
@@ -328,32 +329,48 @@ export async function fetchSessions(userId: string): Promise<Session[]> {
 }
 
 export async function insertSession(userId: string, session: Omit<Session, 'id'>): Promise<Session | null> {
+  const basePayload = {
+    user_id:            userId,
+    client_id:          session.clientId,
+    date:               session.date,
+    time:               session.time,
+    duration:           session.duration,
+    status:             session.status,
+    notes:              session.notes,
+    mood:               session.mood ?? null,
+    topics:             session.topics,
+    homework:           session.homework ?? null,
+    next_session_goals: session.nextSessionGoals ?? null,
+    is_paid:            session.isPaid,
+    amount:             session.amount,
+  };
+
   const { data, error } = await supabase
     .from('sessions')
     .insert({
-      user_id:            userId,
-      client_id:          session.clientId,
-      date:               session.date,
-      time:               session.time,
-      duration:           session.duration,
-      status:             session.status,
-      notes:              session.notes,
-      mood:               session.mood ?? null,
-      topics:             session.topics,
-      homework:           session.homework ?? null,
-      next_session_goals: session.nextSessionGoals ?? null,
-      is_paid:            session.isPaid,
-      amount:             session.amount,
+      ...basePayload,
+      appointment_id:     session.appointmentId ?? null,
     })
     .select()
     .single();
 
-  if (error) { console.error('[Sessions] insert error:', error.message); return null; }
-  return mapSession(data);
+  if (!error) return mapSession(data);
+
+  console.warn('[Sessions] insert with appointment_id failed, retrying without:', error.message);
+  const { data: data2, error: error2 } = await supabase
+    .from('sessions')
+    .insert(basePayload)
+    .select()
+    .single();
+
+  if (error2) { console.error('[Sessions] insert error:', error2.message); return null; }
+  return mapSession(data2);
 }
 
 export async function updateSessionDb(sessionId: string, data: Partial<Session>): Promise<void> {
   const payload: Record<string, unknown> = {};
+  const extended: Record<string, unknown> = {};
+  if (data.appointmentId      !== undefined) extended.appointment_id      = data.appointmentId;
   if (data.date               !== undefined) payload.date               = data.date;
   if (data.time               !== undefined) payload.time               = data.time;
   if (data.duration           !== undefined) payload.duration           = data.duration;
@@ -366,8 +383,16 @@ export async function updateSessionDb(sessionId: string, data: Partial<Session>)
   if (data.isPaid             !== undefined) payload.is_paid            = data.isPaid;
   if (data.amount             !== undefined) payload.amount             = data.amount;
 
-  const { error } = await supabase.from('sessions').update(payload).eq('id', sessionId);
-  if (error) console.error('[Sessions] update error:', error.message);
+  const { error } = await supabase.from('sessions').update({ ...payload, ...extended }).eq('id', sessionId);
+  if (error) {
+    if (Object.keys(extended).length > 0 && Object.keys(payload).length > 0) {
+      console.warn('[Sessions] update with appointment_id failed, retrying:', error.message);
+      const { error: error2 } = await supabase.from('sessions').update(payload).eq('id', sessionId);
+      if (error2) console.error('[Sessions] update error:', error2.message);
+    } else {
+      console.error('[Sessions] update error:', error.message);
+    }
+  }
 }
 
 export async function deleteSessionDb(sessionId: string): Promise<void> {
@@ -463,6 +488,7 @@ export async function batchInsertSessions(
   const rows = sessions.map(s => ({
     user_id:   userId,
     client_id: s.clientId,
+    appointment_id: s.appointmentId ?? null,
     date:      s.date,
     time:      s.time,
     duration:  s.duration,
@@ -473,8 +499,24 @@ export async function batchInsertSessions(
     amount:    s.amount,
   }));
   const { data, error } = await supabase.from('sessions').insert(rows).select();
-  if (error) { console.error('[Sessions] batch insert error:', error.message); return []; }
-  return (data ?? []).map(mapSession);
+  if (!error) return (data ?? []).map(mapSession);
+
+  console.warn('[Sessions] batch insert with appointment_id failed, retrying without:', error.message);
+  const fallbackRows = sessions.map(s => ({
+    user_id:   userId,
+    client_id: s.clientId,
+    date:      s.date,
+    time:      s.time,
+    duration:  s.duration,
+    status:    s.status,
+    notes:     s.notes,
+    topics:    s.topics,
+    is_paid:   s.isPaid,
+    amount:    s.amount,
+  }));
+  const { data: data2, error: error2 } = await supabase.from('sessions').insert(fallbackRows).select();
+  if (error2) { console.error('[Sessions] batch insert error:', error2.message); return []; }
+  return (data2 ?? []).map(mapSession);
 }
 
 // ─────────────────────────────────────────────────────────────
