@@ -332,13 +332,13 @@ export const NotificationSystem = () => {
       }
     : {
         top: dropdownTop,
-        right: (() => {
-          if (bellRef.current) {
-            const rect = bellRef.current.getBoundingClientRect();
-            return `${Math.max(window.innerWidth - rect.right, 12)}px`;
-          }
-          return '16px';
-        })(),
+        // right: (() => {
+        //   if (bellRef.current) {
+        //     const rect = bellRef.current.getBoundingClientRect();
+        //     return `${Math.max(window.innerWidth - rect.right, 12)}px`;
+        //   }
+        //   return '16px';
+        // })(),
         width: '24rem',
         maxHeight: 'min(80vh, 420px)',
       };
