@@ -22,7 +22,6 @@ import Settings from './pages/Settings';
 import VKCallback from './pages/VKCallback';
 import YandexCallback from './pages/YandexCallback';
 import AIFloatingChat from './components/AIFloatingChat';
-import NotificationSystem from './components/NotificationSystem';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder.apps.googleusercontent.com';
 
@@ -46,16 +45,6 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function GlobalNotifications() {
-  const { isAuthenticated } = useApp();
-  if (!isAuthenticated) return null;
-  return (
-    <div className="fixed top-2 right-14 lg:top-4 lg:left-[17.5rem] lg:right-auto z-[55]">
-      <NotificationSystem />
-    </div>
-  );
-}
-
 function AppRoutes() {
   const { isAuthenticated, user, loading } = useApp();
 
@@ -63,7 +52,6 @@ function AppRoutes() {
 
   return (
     <>
-      {isAuthenticated && user?.onboardingComplete && <GlobalNotifications />}
       {isAuthenticated && user?.onboardingComplete && <AIFloatingChat />}
       <Routes>
         {/* ── Public ── */}

@@ -1,5 +1,6 @@
 import { TR } from '../utils/tr';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { Bell, X, Clock, CheckCircle, FileText, AlertCircle, ExternalLink, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +46,7 @@ interface QuickNoteModalProps {
 }
 
 const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTime }: QuickNoteModalProps) => {
-  const { sessions, updateSession, appointments, updateAppointment, ensureSessionForAppointment, clients, updateClient } = useApp();
+  const { sessions, updateSession, appointments, updateAppointment, ensureSessionForAppointment } = useApp();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'completed' | 'cancelled' | 'no-show'>('completed');
   const [quickNote, setQuickNote] = useState('');
@@ -64,9 +65,6 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
     let sessionId = session?.id;
     if (!sessionId && appointment) sessionId = await ensureSessionForAppointment(appointment);
 
-    const wasCompleted = session?.status === 'completed';
-    const isNowCompleted = status === 'completed';
-
     if (sessionId) {
       const existing = sessions.find(s => s.id === sessionId);
       await updateSession(sessionId, {
@@ -77,13 +75,6 @@ const QuickNoteModal = ({ isOpen, onClose, clientId, clientName, aptDate, aptTim
       });
     }
     if (appointment) await updateAppointment(appointment.id, { status });
-
-    if (!wasCompleted && isNowCompleted) {
-      const client = clients.find(c => c.id === clientId);
-      if (client?.packageId && (client.remainingSessions ?? 0) > 0) {
-        await updateClient(clientId, { remainingSessions: (client.remainingSessions ?? 1) - 1 });
-      }
-    }
     setSaving(false);
     onClose();
   };
@@ -322,6 +313,35 @@ export const NotificationSystem = () => {
 
   const clearAll   = () => { setNotifications([]); setIsOpen(false); };
   const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const dropdownTop = (() => {
+    if (isMobile) return '56px';
+    if (bellRef.current) {
+      const rect = bellRef.current.getBoundingClientRect();
+      return `${Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - 440))}px`;
+    }
+    return '60px';
+  })();
+  const dropdownStyle = isMobile
+    ? {
+        top: dropdownTop,
+        left: '8px',
+        right: '8px',
+        width: 'auto',
+        maxHeight: 'calc(100vh - 72px)',
+      }
+    : {
+        top: dropdownTop,
+        // right: (() => {
+        //   if (bellRef.current) {
+        //     const rect = bellRef.current.getBoundingClientRect();
+        //     return `${Math.max(window.innerWidth - rect.right, 12)}px`;
+        //   }
+        //   return '16px';
+        // })(),
+        width: '24rem',
+        maxHeight: 'min(80vh, 420px)',
+      };
 
   return (
     <>
@@ -340,27 +360,11 @@ export const NotificationSystem = () => {
       </button>
 
       {/* Dropdown — fixed position */}
-      {isOpen && (
+      {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[60] w-[calc(100vw-16px)] sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
-          style={{
-            top: (() => {
-              if (bellRef.current) {
-                const rect = bellRef.current.getBoundingClientRect();
-                return Math.min(rect.bottom + 8, window.innerHeight - 420) + 'px';
-              }
-              return '60px';
-            })(),
-            right: (() => {
-              if (window.innerWidth < 640) return '8px';
-              if (bellRef.current) {
-                const rect = bellRef.current.getBoundingClientRect();
-                return Math.max(window.innerWidth - rect.right, 8) + 'px';
-              }
-              return '16px';
-            })(),
-          }}
+          className="fixed z-[60] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
+          style={dropdownStyle}
         >
           {/* Header */}
           <div className="p-4 flex items-center justify-between bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
@@ -382,7 +386,10 @@ export const NotificationSystem = () => {
           </div>
 
           {/* List */}
-          <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-50 dark:divide-slate-700">
+          <div
+            className="overflow-y-auto divide-y divide-gray-50 dark:divide-slate-700"
+            style={{ maxHeight: isMobile ? 'calc(100vh - 180px)' : '360px' }}
+          >
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-400 dark:text-gray-500">
                 <Bell className="w-10 h-10 mx-auto mb-3 opacity-20" />
@@ -413,7 +420,7 @@ export const NotificationSystem = () => {
             </div>
           )}
         </div>
-      )}
+      , document.body)}
 
       <QuickNoteModal
         isOpen={quickNote.isOpen}

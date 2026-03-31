@@ -261,6 +261,37 @@ export default function Reports() {
     return { paid, unpaid, unpaidAmount };
   }, [filteredSessions]);
 
+  const acquisitionData = useMemo(() => {
+    const relevantClients = clients.filter(client => {
+      if (!client.createdAt) return false;
+      const createdAt = new Date(client.createdAt);
+      return isWithinInterval(createdAt, periodDates);
+    });
+
+    const channelMap: Record<string, number> = {};
+    relevantClients.forEach(client => {
+      const key = client.acquisitionChannel || TR("Не указан", "Not specified");
+      channelMap[key] = (channelMap[key] || 0) + 1;
+    });
+
+    const labels: Record<string, string> = {
+      aggregator: TR("Агрегатор", "Aggregator"),
+      word_of_mouth: TR("Сарафанное радио", "Word of mouth"),
+      colleague_referral: TR("Рекомендация коллеги", "Colleague referral"),
+      social_media: TR("Соцсети", "Social media"),
+      other: TR("Другое", "Other"),
+      [TR("Не указан", "Not specified")]: TR("Не указан", "Not specified"),
+    };
+
+    return Object.entries(channelMap)
+      .map(([key, value]) => ({
+        key,
+        name: labels[key] || key,
+        value,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [clients, periodDates]);
+
   const COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#14B8A6'];
 
   const periodLabels: Record<Period, string> = {
@@ -526,6 +557,51 @@ export default function Reports() {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="card mb-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Users className="w-5 h-5 text-indigo-600" />
+            <h3 className="font-semibold text-gray-900">{TR("Каналы привлечения", "Acquisition channels")}</h3>
+          </div>
+          {acquisitionData.length > 0 ? (
+            <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-6 items-center">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={acquisitionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#9CA3AF" />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} stroke="#9CA3AF" />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                    formatter={(value) => [Number(value || 0), TR("Клиентов", "Clients")]}
+                  />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {acquisitionData.map((entry, index) => (
+                      <Cell key={entry.key} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="space-y-3">
+                {acquisitionData.map((channel, index) => (
+                  <div key={channel.key} className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="inline-block h-3 w-3 rounded-full"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-sm font-medium text-gray-700">{channel.name}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{channel.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-gray-500">
+              {TR("Нет данных по каналам привлечения за выбранный период", "No acquisition channel data for the selected period")}
+            </div>
+          )}
         </div>
 
         {/* Mood Chart */}

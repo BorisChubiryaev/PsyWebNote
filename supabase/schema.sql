@@ -87,6 +87,10 @@ create table if not exists public.clients (
   updated_at         timestamptz not null default now()
 );
 
+alter table public.clients add column if not exists individual_rate numeric;
+alter table public.clients add column if not exists individual_currency text;
+alter table public.clients add column if not exists acquisition_channel text;
+
 alter table public.clients enable row level security;
 create policy "Users manage own clients" on public.clients for all using (auth.uid() = user_id);
 
@@ -117,12 +121,15 @@ create table if not exists public.sessions (
   updated_at         timestamptz not null default now()
 );
 
+alter table public.sessions add column if not exists appointment_id uuid;
+
 alter table public.sessions enable row level security;
 create policy "Users manage own sessions" on public.sessions for all using (auth.uid() = user_id);
 
 create index if not exists sessions_user_id_idx    on public.sessions(user_id);
 create index if not exists sessions_client_id_idx  on public.sessions(client_id);
 create index if not exists sessions_date_idx        on public.sessions(date);
+create index if not exists sessions_appointment_id_idx on public.sessions(appointment_id);
 
 create trigger sessions_updated_at before update on public.sessions
   for each row execute procedure public.set_updated_at();
