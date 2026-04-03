@@ -1,5 +1,5 @@
 import { TR } from '../utils/tr';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Sparkles, X, Send, Loader2, Bot, User as UserIcon, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { sendToMistral, ChatMessage, getGeneralPrompt } from '../services/mistral';
 import { useApp } from '../context/AppContext';
@@ -13,13 +13,6 @@ interface Message {
   ts: Date;
 }
 
-const QUICK_QUESTIONS = [
-  TR("Что такое КПТ и как её применять?", "What is CBT and how to use it?"),
-  TR("Техники работы с тревогой", "Techniques for dealing with anxiety"),
-  TR("Как выстроить терапевтический альянс?", "How to build a therapeutic alliance?"),
-  TR("Признаки эмоционального выгорания психолога", "Signs of emotional burnout in a psychologist"),
-];
-
 export default function AIFloatingChat() {
   const { user } = useApp();
   const { language } = useLanguage();
@@ -32,13 +25,24 @@ export default function AIFloatingChat() {
   const endRef   = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [isDesktopLayout, setIsDesktopLayout] = useState(window.innerWidth >= 1024);
   const timeLocale = language === 'ru' ? 'ru-RU' : 'en-US';
 
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 640);
+    const handler = () => {
+      setIsMobile(window.innerWidth < 640);
+      setIsDesktopLayout(window.innerWidth >= 1024);
+    };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
+
+  const quickQuestions = useMemo(() => ([
+    TR("Что такое КПТ и как её применять?", "What is CBT and how to use it?"),
+    TR("Техники работы с тревогой", "Techniques for dealing with anxiety"),
+    TR("Как выстроить терапевтический альянс?", "How to build a therapeutic alliance?"),
+    TR("Признаки эмоционального выгорания психолога", "Signs of emotional burnout in a psychologist"),
+  ]), [language]);
 
   const systemPrompt = getGeneralPrompt({
     name: user?.name,
@@ -95,7 +99,7 @@ export default function AIFloatingChat() {
     bottom: 0, left: 0, right: 0,
     top: isMax ? 0 : 'auto',
     height: isMax ? '100dvh' : '70dvh',
-    zIndex: 50,
+    zIndex: 70,
     borderRadius: isMax ? 0 : '20px 20px 0 0',
   });
 
@@ -103,11 +107,11 @@ export default function AIFloatingChat() {
     position: 'fixed',
     bottom: isMax ? 0 : 24,
     right: isMax ? 0 : 24,
-    left: isMax ? 0 : 'auto',
+    left: isMax ? (isDesktopLayout ? 256 : 0) : 'auto',
     top: isMax ? 0 : 'auto',
-    width: isMax ? '100vw' : 380,
+    width: isMax ? (isDesktopLayout ? 'calc(100vw - 256px)' : '100vw') : 380,
     height: isMax ? '100vh' : 520,
-    zIndex: 50,
+    zIndex: 70,
     borderRadius: isMax ? 0 : 20,
   });
 
@@ -198,7 +202,7 @@ export default function AIFloatingChat() {
                     <div className="ml-9">
                       <p className="text-xs text-gray-400 mb-2">{TR("Быстрые вопросы:", "Quick questions:")}</p>
                       <div className="space-y-1.5">
-                        {QUICK_QUESTIONS.map((q, i) => (
+                        {quickQuestions.map((q, i) => (
                           <button key={i} onClick={() => send(q)}
                             className="block w-full text-left text-xs px-3 py-2 bg-white text-violet-700 rounded-xl border border-violet-100 hover:bg-violet-50 transition-colors">
                             {q}

@@ -124,10 +124,10 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-slate-900 overflow-x-hidden">
 
       {/* ── Navigation ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl flex items-center justify-center shadow-md shadow-indigo-500/25">
@@ -149,18 +149,18 @@ export default function Landing() {
           <div className="flex items-center gap-3">
             <button
               onClick={toggleLanguage}
-              className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2 border border-gray-200 rounded-lg"
+              className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-indigo-600 transition-colors px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg"
             >
               {language === 'ru' ? 'EN' : 'RU'}
             </button>
             <button
               onClick={() => navigate('/login')}
-              className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2"
+              className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-indigo-600 transition-colors px-3 py-2"
             >
               {TR("\n              Войти\n            ", "Login")}</button>
             <button
               onClick={() => navigate('/register')}
-              className="text-sm font-bold px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+              className="text-sm font-bold px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all ring-1 ring-indigo-300/40"
             >
               {TR("\n              Начать бесплатно\n            ", "Start for free")}</button>
           </div>
@@ -184,13 +184,13 @@ export default function Landing() {
             <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
             {TR("\n            Бесплатный бета-доступ\n          ", "Free beta access")}</div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 mb-6 leading-tight">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 dark:text-white mb-6 leading-tight">
             {TR("\n            Рабочее пространство\n            ", "Workspace")}<br />
             <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
               {TR("\n              современного психолога\n            ", "modern psychologist")}</span>
           </h1>
 
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-xl text-gray-500 dark:text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             {TR("\n            Управляйте клиентами, ведите журнал сессий, отслеживайте финансы\n            и получайте AI-аналитику — всё в одном месте.\n          ", "Manage clients, keep session logs, track finances\n            and get AI analytics - all in one place.")}</p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -202,7 +202,7 @@ export default function Landing() {
             </button>
             <button
               onClick={() => navigate('/login')}
-              className="flex items-center gap-2 px-8 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-2xl hover:border-indigo-300 hover:text-indigo-600 transition-all text-lg"
+              className="flex items-center gap-2 px-8 py-4 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-100 font-bold rounded-2xl hover:border-indigo-300 hover:text-indigo-600 transition-all text-lg"
             >
               {TR("\n              Войти в аккаунт\n            ", "Login to account")}</button>
           </div>

@@ -63,19 +63,19 @@ html {
 /* ── Components ─────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-95;
+    @apply inline-flex items-center justify-center min-h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-95;
   }
 
   .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-5 rounded-xl border border-gray-200 transition-all duration-200 hover:border-gray-300 active:scale-95;
+    @apply inline-flex items-center justify-center min-h-11 bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-5 rounded-xl border border-gray-200 transition-all duration-200 hover:border-gray-300 active:scale-95;
   }
 
   .btn-danger {
-    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 active:scale-95;
+    @apply inline-flex items-center justify-center min-h-11 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 active:scale-95;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-200 bg-white text-gray-900;
+    @apply w-full min-h-11 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-200 bg-white text-gray-900;
   }
 
   .card {
@@ -107,6 +107,19 @@ html {
   background-color: #334155;
   border-color: #475569;
   color: #e2e8f0;
+}
+
+.dark .btn-secondary:hover {
+  background-color: #3f4f67;
+  border-color: #64748b;
+}
+
+.dark .btn-primary {
+  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.35);
+}
+
+select.input-field {
+  padding-right: 2.25rem;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────── */
@@ -148,4 +161,13 @@ html {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   nav.bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Prevent iOS PWA zoom on focus for small text inputs */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }

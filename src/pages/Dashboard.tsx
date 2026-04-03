@@ -63,12 +63,24 @@ export default function Dashboard() {
   };
 
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
+  const isCustomEvent = (apt: typeof appointments[number]) => apt.kind === 'custom' || !apt.clientId;
+  const customTypeLabel = (apt: typeof appointments[number]) => {
+    switch (apt.customType) {
+      case 'supervision': return t('calendar_event_supervision');
+      case 'seminar': return t('calendar_event_seminar');
+      case 'group_supervision': return t('calendar_event_group_supervision');
+      case 'intervision': return t('calendar_event_intervision');
+      default: return t('calendar_custom_events');
+    }
+  };
 
   const goToSession = async (apt: typeof appointments[0]) => {
     if (navigatingId) return;
+    if (!apt.clientId || isCustomEvent(apt)) return;
     setNavigatingId(apt.id);
     try {
       const sid = await ensureSessionForAppointment(apt);
+      if (!sid) return;
       navigate(`/clients/${apt.clientId}/sessions/${sid}/edit`);
     } finally {
       setNavigatingId(null);
@@ -77,9 +89,11 @@ export default function Dashboard() {
 
   const goToSessionView = async (apt: typeof appointments[0]) => {
     if (navigatingId) return;
+    if (!apt.clientId || isCustomEvent(apt)) return;
     setNavigatingId(apt.id);
     try {
       const sid = await ensureSessionForAppointment(apt);
+      if (!sid) return;
       navigate(`/clients/${apt.clientId}/sessions/${sid}`);
     } finally {
       setNavigatingId(null);
@@ -169,41 +183,53 @@ export default function Dashboard() {
             </div>
             {stats.todayAppointments.length > 0 ? (
               <div className="space-y-2">
-                {stats.todayAppointments.map(apt => (
-                  <div key={apt.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                {stats.todayAppointments.map(apt => {
+                  const custom = isCustomEvent(apt);
+                  const eventClass = custom
+                    ? 'bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800';
+                  return (
+                  <div key={apt.id} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${eventClass}`}>
                     <div className="text-center min-w-[44px] flex-shrink-0">
-                      <p className="text-base font-bold text-indigo-600 leading-tight">{apt.time}</p>
+                      <p className={`text-base font-bold leading-tight ${custom ? 'text-violet-700 dark:text-violet-300' : 'text-indigo-600'}`}>{apt.time}</p>
                     </div>
-                    <button onClick={() => goToSessionView(apt)} disabled={!!navigatingId} className="flex-1 min-w-0 text-left">
+                    <button onClick={() => !custom && goToSessionView(apt)} disabled={!!navigatingId || custom} className="flex-1 min-w-0 text-left disabled:cursor-default">
                       <p className="font-medium text-gray-900 dark:text-white text-sm truncate hover:text-indigo-600 transition-colors">
                         {apt.clientName}
                       </p>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                        {apt.isOnline ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                        <span>{apt.isOnline ? t('online') : t('offline')}</span>
+                        {custom ? <CalendarIcon className="w-3 h-3" /> : (apt.isOnline ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />)}
+                        <span>{custom ? customTypeLabel(apt) : (apt.isOnline ? t('online') : t('offline'))}</span>
                         <span>· {apt.duration} {t('minutes')}</span>
                       </div>
                     </button>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => goToSession(apt)}
-                        disabled={!!navigatingId}
-                        className="flex items-center gap-1 py-1.5 px-2.5 text-xs bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium disabled:opacity-60"
-                      >
-                        {navigatingId === apt.id
-                          ? <Loader2 className="w-3 h-3 animate-spin" />
-                          : <Edit className="w-3 h-3" />}
-                        {language === 'ru' ? TR("Записать", "Write down") : 'Record'}
-                      </button>
-                      {apt.isOnline && apt.meetingLink && (
+                      {!custom && (
+                        <button
+                          onClick={() => goToSession(apt)}
+                          disabled={!!navigatingId}
+                          className="flex items-center gap-1 py-1.5 px-2.5 text-xs bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium disabled:opacity-60"
+                        >
+                          {navigatingId === apt.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <Edit className="w-3 h-3" />}
+                          {language === 'ru' ? TR("Записать", "Write down") : 'Record'}
+                        </button>
+                      )}
+                      {!custom && apt.isOnline && apt.meetingLink && (
                         <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer"
                           className="py-1.5 px-2.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium">
                           {language === 'ru' ? TR("Войти", "Login") : 'Join'}
                         </a>
                       )}
+                      {custom && (
+                        <span className="py-1.5 px-2.5 text-xs bg-violet-100 text-violet-700 rounded-lg font-medium">
+                          {t('calendar_custom_events')}
+                        </span>
+                      )}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">

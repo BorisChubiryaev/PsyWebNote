@@ -48,6 +48,11 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+const CUSTOM_EVENT_PREFIX = '__event__:';
+const isCustomCalendarEvent = (apt: Appointment) =>
+  apt.kind === 'custom' ||
+  (!apt.clientId) ||
+  apt.clientId.startsWith(CUSTOM_EVENT_PREFIX);
 
 // ─────────────────────────────────────────────────────────────
 // Provider
@@ -203,6 +208,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Session helpers ────────────────────────────────────────
 
   const ensureSessionForAppointment = useCallback(async (apt: Appointment): Promise<string> => {
+    if (isCustomCalendarEvent(apt)) return '';
+    if (!apt.clientId) return '';
+
     // First try to find by appointmentId
     const byAptId = sessionsRef.current.find(s => s.appointmentId === apt.id);
     if (byAptId) return byAptId.id;
@@ -584,8 +592,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    // Ensure session exists and link appointmentId
-    await ensureSessionForAppointment(created);
+    // Ensure session exists and link appointmentId only for client sessions.
+    if (!isCustomCalendarEvent(created)) {
+      await ensureSessionForAppointment(created);
+    }
     return created;
   };
 
@@ -610,6 +620,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       await updateAppointmentDb(id, data);
     }
+
+    if (isCustomCalendarEvent(nextAppointment)) {
+      return;
+    }
+    if (!nextAppointment.clientId || !old.clientId) return;
 
     const sess = sessionsRef.current.find(
       s => (s.appointmentId && s.appointmentId === id) ||

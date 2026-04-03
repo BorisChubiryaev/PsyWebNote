@@ -42,6 +42,10 @@ export default function Layout({ children }: LayoutProps) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
 

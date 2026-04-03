@@ -94,7 +94,7 @@ function mapSession(row: any): Session {
 function mapAppointment(row: any): Appointment {
   return {
     id:          row.id,
-    clientId:    row.client_id,
+    clientId:    row.client_id ?? undefined,
     clientName:  row.client_name,
     date:        typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
     time:        row.time,
@@ -102,6 +102,8 @@ function mapAppointment(row: any): Appointment {
     status:      row.status ?? 'scheduled',
     isOnline:    row.is_online ?? false,
     meetingLink: row.meeting_link ?? undefined,
+    kind:        row.kind ?? 'session',
+    customType:  row.custom_type ?? undefined,
   };
 }
 
@@ -416,28 +418,52 @@ export async function fetchAppointments(userId: string): Promise<Appointment[]> 
 }
 
 export async function insertAppointment(userId: string, apt: Omit<Appointment, 'id'>): Promise<Appointment | null> {
+  const payload = {
+    user_id:      userId,
+    client_id:    apt.clientId ?? null,
+    client_name:  apt.clientName,
+    date:         apt.date,
+    time:         apt.time,
+    duration:     apt.duration,
+    status:       apt.status,
+    is_online:    apt.isOnline,
+    meeting_link: apt.meetingLink ?? null,
+    kind:         apt.kind ?? 'session',
+    custom_type:  apt.customType ?? null,
+  };
+
   const { data, error } = await supabase
     .from('appointments')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (!error) return mapAppointment(data);
+
+  // Backward compatibility: old schema may not have kind/custom_type columns.
+  const { data: fallback, error: fallbackError } = await supabase
+    .from('appointments')
     .insert({
-      user_id:     userId,
-      client_id:   apt.clientId,
-      client_name: apt.clientName,
-      date:        apt.date,
-      time:        apt.time,
-      duration:    apt.duration,
-      status:      apt.status,
-      is_online:   apt.isOnline,
+      user_id:      userId,
+      client_id:    apt.clientId ?? null,
+      client_name:  apt.clientName,
+      date:         apt.date,
+      time:         apt.time,
+      duration:     apt.duration,
+      status:       apt.status,
+      is_online:    apt.isOnline,
       meeting_link: apt.meetingLink ?? null,
     })
     .select()
     .single();
 
-  if (error) { console.error('[Appointments] insert error:', error.message); return null; }
-  return mapAppointment(data);
+  if (fallbackError) { console.error('[Appointments] insert error:', fallbackError.message); return null; }
+  return mapAppointment(fallback);
 }
 
 export async function updateAppointmentDb(aptId: string, data: Partial<Appointment>): Promise<void> {
   const payload: Record<string, unknown> = {};
+  if (data.clientId    !== undefined) payload.client_id    = data.clientId ?? null;
   if (data.clientName  !== undefined) payload.client_name  = data.clientName;
   if (data.date        !== undefined) payload.date         = data.date;
   if (data.time        !== undefined) payload.time         = data.time;
@@ -445,9 +471,17 @@ export async function updateAppointmentDb(aptId: string, data: Partial<Appointme
   if (data.status      !== undefined) payload.status       = data.status;
   if (data.isOnline    !== undefined) payload.is_online    = data.isOnline;
   if (data.meetingLink !== undefined) payload.meeting_link = data.meetingLink;
+  if (data.kind        !== undefined) payload.kind         = data.kind;
+  if (data.customType  !== undefined) payload.custom_type  = data.customType;
 
   const { error } = await supabase.from('appointments').update(payload).eq('id', aptId);
-  if (error) console.error('[Appointments] update error:', error.message);
+  if (!error) return;
+
+  const fallbackPayload = { ...payload };
+  delete fallbackPayload.kind;
+  delete fallbackPayload.custom_type;
+  const { error: fallbackError } = await supabase.from('appointments').update(fallbackPayload).eq('id', aptId);
+  if (fallbackError) console.error('[Appointments] update error:', fallbackError.message);
 }
 
 export async function deleteAppointmentDb(aptId: string): Promise<void> {
@@ -466,7 +500,23 @@ export async function batchInsertAppointments(
   if (apts.length === 0) return [];
   const rows = apts.map(apt => ({
     user_id:      userId,
-    client_id:    apt.clientId,
+    client_id:    apt.clientId ?? null,
+    client_name:  apt.clientName,
+    date:         apt.date,
+    time:         apt.time,
+    duration:     apt.duration,
+    status:       apt.status,
+    is_online:    apt.isOnline,
+    meeting_link: apt.meetingLink ?? null,
+    kind:         apt.kind ?? 'session',
+    custom_type:  apt.customType ?? null,
+  }));
+  const { data, error } = await supabase.from('appointments').insert(rows).select();
+  if (!error) return (data ?? []).map(mapAppointment);
+
+  const fallbackRows = apts.map(apt => ({
+    user_id:      userId,
+    client_id:    apt.clientId ?? null,
     client_name:  apt.clientName,
     date:         apt.date,
     time:         apt.time,
@@ -475,9 +525,9 @@ export async function batchInsertAppointments(
     is_online:    apt.isOnline,
     meeting_link: apt.meetingLink ?? null,
   }));
-  const { data, error } = await supabase.from('appointments').insert(rows).select();
-  if (error) { console.error('[Appointments] batch insert error:', error.message); return []; }
-  return (data ?? []).map(mapAppointment);
+  const { data: fallback, error: fallbackError } = await supabase.from('appointments').insert(fallbackRows).select();
+  if (fallbackError) { console.error('[Appointments] batch insert error:', fallbackError.message); return []; }
+  return (fallback ?? []).map(mapAppointment);
 }
 
 export async function batchInsertSessions(
