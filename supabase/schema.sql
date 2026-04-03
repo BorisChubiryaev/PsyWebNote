@@ -139,18 +139,27 @@ create trigger sessions_updated_at before update on public.sessions
 create table if not exists public.appointments (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references auth.users(id) on delete cascade,
-  client_id    uuid not null references public.clients(id) on delete cascade,
+  client_id    uuid references public.clients(id) on delete cascade,
   client_name  text not null,
   date         date not null,
   time         text not null,
   duration     integer not null default 60,
   status       text not null default 'scheduled'
                  check (status in ('scheduled','completed','cancelled','no-show')),
+  kind         text not null default 'session'
+                 check (kind in ('session','custom')),
+  custom_type  text
+                 check (custom_type in ('supervision','seminar','group_supervision','intervision')),
   is_online    boolean not null default false,
   meeting_link text,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+
+alter table public.appointments alter column client_id drop not null;
+alter table public.appointments add column if not exists kind text not null default 'session';
+alter table public.appointments add column if not exists custom_type text;
+update public.appointments set kind = 'session' where kind is null;
 
 alter table public.appointments enable row level security;
 create policy "Users manage own appointments" on public.appointments for all using (auth.uid() = user_id);
@@ -158,6 +167,7 @@ create policy "Users manage own appointments" on public.appointments for all usi
 create index if not exists appointments_user_id_idx   on public.appointments(user_id);
 create index if not exists appointments_client_id_idx on public.appointments(client_id);
 create index if not exists appointments_date_idx       on public.appointments(date);
+create index if not exists appointments_kind_idx       on public.appointments(kind);
 
 create trigger appointments_updated_at before update on public.appointments
   for each row execute procedure public.set_updated_at();

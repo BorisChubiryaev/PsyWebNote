@@ -92,7 +92,7 @@ export interface Session {
 
 export interface Appointment {
   id: string;
-  clientId: string;
+  clientId?: string;
   clientName: string;
   date: string;
   time: string;
@@ -100,4 +100,6 @@ export interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   isOnline: boolean;
   meetingLink?: string;
+  kind?: 'session' | 'custom';
+  customType?: 'supervision' | 'seminar' | 'group_supervision' | 'intervision';
 }

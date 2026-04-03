@@ -49,7 +49,10 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 const CUSTOM_EVENT_PREFIX = '__event__:';
-const isCustomCalendarEvent = (apt: Appointment) => apt.clientId.startsWith(CUSTOM_EVENT_PREFIX);
+const isCustomCalendarEvent = (apt: Appointment) =>
+  apt.kind === 'custom' ||
+  (!apt.clientId) ||
+  apt.clientId.startsWith(CUSTOM_EVENT_PREFIX);
 
 // ─────────────────────────────────────────────────────────────
 // Provider
@@ -206,6 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const ensureSessionForAppointment = useCallback(async (apt: Appointment): Promise<string> => {
     if (isCustomCalendarEvent(apt)) return '';
+    if (!apt.clientId) return '';
 
     // First try to find by appointmentId
     const byAptId = sessionsRef.current.find(s => s.appointmentId === apt.id);
@@ -620,6 +624,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isCustomCalendarEvent(nextAppointment)) {
       return;
     }
+    if (!nextAppointment.clientId || !old.clientId) return;
 
     const sess = sessionsRef.current.find(
       s => (s.appointmentId && s.appointmentId === id) ||

@@ -21,12 +21,9 @@ type ViewMode = 'month' | 'week' | 'day';
 type CalendarItemsMode = 'all' | 'sessions' | 'custom';
 type AddEntryType = 'session' | 'custom';
 type CustomEventType = 'supervision' | 'seminar' | 'group_supervision' | 'intervision';
-
-const CUSTOM_EVENT_PREFIX = '__event__:';
-
-const isCustomEvent = (apt: Appointment) => apt.clientId.startsWith(CUSTOM_EVENT_PREFIX);
+const isCustomEvent = (apt: Appointment) => apt.kind === 'custom' || !apt.clientId;
 const getCustomEventType = (apt: Appointment): CustomEventType => {
-  const raw = apt.clientId.replace(CUSTOM_EVENT_PREFIX, '') as CustomEventType;
+  const raw = (apt.customType || 'seminar') as CustomEventType;
   if (raw === 'supervision' || raw === 'seminar' || raw === 'group_supervision' || raw === 'intervision') {
     return raw;
   }
@@ -162,13 +159,15 @@ export default function Calendar() {
 
     if (newApt.entryType === 'custom') {
       await addAppointment({
-        clientId: `${CUSTOM_EVENT_PREFIX}${newApt.customType}`,
+        clientId: undefined,
         clientName: newApt.customTitle.trim(),
         date: newApt.date,
         time: newApt.time,
         duration: newApt.duration,
         status: 'scheduled',
         isOnline: false,
+        kind: 'custom',
+        customType: newApt.customType,
       });
       setShowAddModal(false);
       resetNewApt();
@@ -187,6 +186,7 @@ export default function Calendar() {
       status: 'scheduled',
       isOnline: newApt.isOnline,
       meetingLink: newApt.isOnline ? (newApt.meetingLink || client.meetingLink) : undefined,
+      kind: 'session',
     });
 
     setShowAddModal(false);
@@ -220,6 +220,7 @@ export default function Calendar() {
 
   const handleAptClick = useCallback(async (apt: Appointment) => {
     if (isCustomEvent(apt) || navigatingId) return;
+    if (!apt.clientId) return;
     setNavigatingId(apt.id);
     try {
       const sessionId = await ensureSessionForAppointment(apt);
@@ -234,6 +235,7 @@ export default function Calendar() {
   const handleEditApt = useCallback(async (e: MouseEvent, apt: Appointment) => {
     e.stopPropagation();
     if (isCustomEvent(apt) || navigatingId) return;
+    if (!apt.clientId) return;
     setNavigatingId(apt.id + '_edit');
     try {
       const sessionId = await ensureSessionForAppointment(apt);
