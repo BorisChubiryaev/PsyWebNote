@@ -24,6 +24,7 @@ export default function Profile() {
 
   const [packages, setPackages] = useState<Package[]>([]);
   const [saved, setSaved] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   // Initialize form data when user loads
   useEffect(() => {
@@ -142,6 +143,12 @@ export default function Profile() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
+                        if (file.size > 10 * 1024 * 1024) {
+                          setAvatarError(TR("Файл слишком большой. Максимум 10 МБ.", "File is too large. Maximum is 10 MB."));
+                          e.currentTarget.value = '';
+                          return;
+                        }
+                        setAvatarError('');
                         const reader = new FileReader();
                         reader.onload = () => {
                           setFormData({ ...formData, avatar: reader.result as string });
@@ -188,6 +195,12 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+
+            {avatarError && (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+                {avatarError}
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{TR("О себе", "About me")}</label>

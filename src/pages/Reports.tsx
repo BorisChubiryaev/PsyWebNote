@@ -9,7 +9,9 @@ import {
   Calendar,
   ChevronDown,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -100,6 +102,14 @@ export default function Reports() {
     
     const prevSessionCount = prevSessions.length;
     const sessionsChange = prevSessionCount > 0 ? ((totalSessions - prevSessionCount) / prevSessionCount) * 100 : 0;
+    const allPeriodSessions = sessions.filter(s => {
+      const sessionDate = parseISO(s.date);
+      return isWithinInterval(sessionDate, periodDates);
+    });
+    const cancelledCount = allPeriodSessions.filter(s => s.status === 'cancelled').length;
+    const noShowCount = allPeriodSessions.filter(s => s.status === 'no-show').length;
+    const cancellationRate = allPeriodSessions.length > 0 ? (cancelledCount / allPeriodSessions.length) * 100 : 0;
+    const noShowRate = allPeriodSessions.length > 0 ? (noShowCount / allPeriodSessions.length) * 100 : 0;
 
     return {
       totalRevenue,
@@ -109,7 +119,9 @@ export default function Reports() {
       avgSessionPrice,
       avgMood,
       revenueChange,
-      sessionsChange
+      sessionsChange,
+      cancellationRate,
+      noShowRate,
     };
   }, [filteredSessions, periodDates, sessions]);
 
@@ -328,7 +340,7 @@ export default function Reports() {
         </div>
 
         {/* Key Metrics */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
             <div className="flex items-start justify-between">
               <div>
@@ -393,6 +405,32 @@ export default function Reports() {
             <p className="text-sm text-amber-600 mt-3">
               {TR("\n              Среднее настроение: ", "Average mood:")}{metrics.avgMood.toFixed(1)}/10
             </p>
+          </div>
+
+          <div className="card bg-gradient-to-br from-rose-50 to-red-50 border border-rose-100">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-rose-600 font-medium">{TR("Отмены", "Cancellations")}</p>
+                <p className="text-2xl font-bold text-rose-700 mt-1">{metrics.cancellationRate.toFixed(1)}%</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center">
+                <X className="w-6 h-6 text-rose-600" />
+              </div>
+            </div>
+            <p className="text-sm text-rose-600 mt-3">{TR("Доля отмен в периоде", "Share of cancellations in period")}</p>
+          </div>
+
+          <div className="card bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-100">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-yellow-700 font-medium">{TR("Неявки", "No-shows")}</p>
+                <p className="text-2xl font-bold text-yellow-800 mt-1">{metrics.noShowRate.toFixed(1)}%</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-yellow-100 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-yellow-700" />
+              </div>
+            </div>
+            <p className="text-sm text-yellow-700 mt-3">{TR("Доля неявок в периоде", "Share of no-shows in period")}</p>
           </div>
         </div>
 

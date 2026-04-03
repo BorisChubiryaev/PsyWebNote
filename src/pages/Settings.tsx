@@ -97,24 +97,6 @@ export default function Settings() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => { if (isDark) toggleTheme(); }}
-              className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${!isDark ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'}`}
-            >
-              <Sun className={`w-6 h-6 ${!isDark ? 'text-indigo-600' : 'text-gray-400'}`} />
-              <span className={`text-sm font-medium ${!isDark ? 'text-indigo-700' : 'text-gray-500 dark:text-gray-400'}`}>{t('theme_light')}</span>
-              {!isDark && <Check className="w-4 h-4 text-indigo-600" />}
-            </button>
-            <button
-              onClick={() => { if (!isDark) toggleTheme(); }}
-              className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${isDark ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'}`}
-            >
-              <Moon className={`w-6 h-6 ${isDark ? 'text-indigo-400' : 'text-gray-400'}`} />
-              <span className={`text-sm font-medium ${isDark ? 'text-indigo-400' : 'text-gray-500'}`}>{t('theme_dark')}</span>
-              {isDark && <Check className="w-4 h-4 text-indigo-400" />}
-            </button>
-          </div>
         </div>
 
         {/* Notifications */}
