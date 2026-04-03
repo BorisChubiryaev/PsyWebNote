@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Plus, Video, MapPin,
-  Clock, X, Calendar as CalendarIcon, List, Grid3X3, Edit, AlertCircle, Loader2
+  Clock, X, Calendar as CalendarIcon, List, Grid3X3, Edit, AlertCircle, Loader2, Trash2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,7 +31,7 @@ const getCustomEventType = (apt: Appointment): CustomEventType => {
 };
 
 export default function Calendar() {
-  const { appointments, clients, addAppointment, ensureSessionForAppointment } = useApp();
+  const { appointments, clients, addAppointment, updateAppointment, deleteAppointment, ensureSessionForAppointment } = useApp();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const dateLocale = language === 'en' ? enUS : ru;
@@ -42,6 +42,7 @@ export default function Calendar() {
   const [itemsMode, setItemsMode] = useState<CalendarItemsMode>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [newApt, setNewApt] = useState({
     entryType: 'session' as AddEntryType,
     customType: 'supervision' as CustomEventType,
@@ -119,11 +120,12 @@ export default function Calendar() {
 
   const weekDayNames = [t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat'), t('day_sun')];
 
-  const checkConflict = (date: string, time: string, duration: number): boolean => {
+  const checkConflict = (date: string, time: string, duration: number, excludeId?: string): boolean => {
     const [fH, fM] = time.split(':').map(Number);
     const fStart = fH * 60 + fM;
     const fEnd = fStart + duration;
     return appointments.some(a => {
+      if (excludeId && a.id === excludeId) return false;
       if (a.date !== date) return false;
       const [aH, aM] = a.time.split(':').map(Number);
       const aStart = aH * 60 + aM;
@@ -137,7 +139,7 @@ export default function Calendar() {
     : !!newApt.customTitle.trim();
 
   const hasConflict = canSubmit
-    ? checkConflict(newApt.date, newApt.time, newApt.duration)
+    ? checkConflict(newApt.date, newApt.time, newApt.duration, editingAppointmentId || undefined)
     : false;
 
   const resetNewApt = () => {
@@ -152,10 +154,42 @@ export default function Calendar() {
       isOnline: true,
       meetingLink: '',
     });
+    setEditingAppointmentId(null);
   };
 
-  const handleAddAppointment = async () => {
+  const handleSaveAppointment = async () => {
     if (hasConflict) return;
+
+    if (editingAppointmentId) {
+      if (newApt.entryType === 'custom') {
+        await updateAppointment(editingAppointmentId, {
+          clientName: newApt.customTitle.trim(),
+          date: newApt.date,
+          time: newApt.time,
+          duration: newApt.duration,
+          kind: 'custom',
+          customType: newApt.customType,
+          isOnline: false,
+          meetingLink: undefined,
+        });
+      } else {
+        const client = clients.find(c => c.id === newApt.clientId);
+        if (!client) return;
+        await updateAppointment(editingAppointmentId, {
+          clientId: newApt.clientId,
+          clientName: client.name,
+          date: newApt.date,
+          time: newApt.time,
+          duration: newApt.duration,
+          kind: 'session',
+          isOnline: newApt.isOnline,
+          meetingLink: newApt.isOnline ? (newApt.meetingLink || client.meetingLink) : undefined,
+        });
+      }
+      setShowAddModal(false);
+      resetNewApt();
+      return;
+    }
 
     if (newApt.entryType === 'custom') {
       await addAppointment({
@@ -203,7 +237,33 @@ export default function Calendar() {
       entryType: 'session',
       customType: 'supervision',
     }));
+    setEditingAppointmentId(null);
     setShowAddModal(true);
+  };
+
+  const openEditModal = (apt: Appointment) => {
+    const custom = isCustomEvent(apt);
+    setEditingAppointmentId(apt.id);
+    setNewApt({
+      entryType: custom ? 'custom' : 'session',
+      customType: custom ? getCustomEventType(apt) : 'supervision',
+      customTitle: custom ? apt.clientName : '',
+      clientId: custom ? '' : (apt.clientId || ''),
+      date: apt.date,
+      time: apt.time,
+      duration: apt.duration,
+      isOnline: custom ? false : apt.isOnline,
+      meetingLink: custom ? '' : (apt.meetingLink || ''),
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDeleteCustomAppointment = async (appointmentId: string) => {
+    await deleteAppointment(appointmentId);
+    if (editingAppointmentId === appointmentId) {
+      setShowAddModal(false);
+      resetNewApt();
+    }
   };
 
   const getAppointmentsForHour = (day: Date, hour: number) => {
@@ -277,8 +337,26 @@ export default function Calendar() {
           )}
         </div>
         {!compact && custom && (
-          <div className="mt-2 text-xs font-medium opacity-90">
-            {eventTypeLabels[customType!]}
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="text-xs font-medium opacity-90 truncate">
+              {eventTypeLabels[customType!]}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={e => { e.stopPropagation(); openEditModal(apt); }}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-white/60 rounded text-xs font-medium hover:bg-white/90"
+              >
+                <Edit className="w-3 h-3" />
+                {t('edit')}
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); handleDeleteCustomAppointment(apt.id); }}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-white/60 rounded text-xs font-medium hover:bg-red-50 text-red-600"
+              >
+                <Trash2 className="w-3 h-3" />
+                {t('delete')}
+              </button>
+            </div>
           </div>
         )}
         {!compact && !custom && (
@@ -601,6 +679,22 @@ export default function Calendar() {
                                   <p className="text-sm font-medium truncate dark:text-white">{apt.clientName}</p>
                                   <p className="text-xs text-gray-500">{apt.time} · {apt.duration} {t('minutes')}</p>
                                 </div>
+                                {custom && (
+                                  <div className="flex items-center gap-1">
+                                    <span
+                                      onClick={e => { e.preventDefault(); e.stopPropagation(); openEditModal(apt); }}
+                                      className="inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-white/70 text-gray-700 cursor-pointer"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </span>
+                                    <span
+                                      onClick={e => { e.preventDefault(); e.stopPropagation(); handleDeleteCustomAppointment(apt.id); }}
+                                      className="inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-red-50 text-red-600 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </span>
+                                  </div>
+                                )}
                               </button>
                             );
                           })}
@@ -619,7 +713,9 @@ export default function Calendar() {
           <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fadeIn">
             <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 animate-slideUp max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('calendar_add_item')}</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  {editingAppointmentId ? t('edit') : t('calendar_add_item')}
+                </h3>
                 <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
@@ -750,11 +846,19 @@ export default function Calendar() {
                 )}
 
                 <div className="flex gap-3 pt-2">
+                  {editingAppointmentId && newApt.entryType === 'custom' && (
+                    <button
+                      onClick={() => editingAppointmentId && handleDeleteCustomAppointment(editingAppointmentId)}
+                      className="btn-danger text-sm"
+                    >
+                      {t('delete')}
+                    </button>
+                  )}
                   <button onClick={() => setShowAddModal(false)} className="btn-secondary flex-1 text-sm">{t('cancel')}</button>
-                  <button onClick={handleAddAppointment}
+                  <button onClick={handleSaveAppointment}
                     disabled={!canSubmit || hasConflict}
                     className="btn-primary flex-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                    {newApt.entryType === 'custom' ? t('calendar_add_custom') : t('add')}
+                    {editingAppointmentId ? t('save') : (newApt.entryType === 'custom' ? t('calendar_add_custom') : t('add'))}
                   </button>
                 </div>
               </div>

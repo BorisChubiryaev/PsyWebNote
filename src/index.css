@@ -162,3 +162,12 @@ select.input-field {
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   nav.bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
 }
+
+/* Prevent iOS PWA zoom on focus for small text inputs */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
